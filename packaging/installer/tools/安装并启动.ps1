@@ -9,19 +9,19 @@ function Say($m) { Write-Host "`n== $m" }
 function Fail($m) { Write-Host "`n!! $m"; Read-Host '按回车关闭' | Out-Null; exit 1 }
 $Release = @{}
 if (Test-Path release.json) { $Release = Get-Content -Raw -Encoding UTF8 release.json | ConvertFrom-Json }
-Say "Lulu $($Release.version) · $($Release.edition_name)"
+Say "Lulu $($Release.version) $($Release.edition_name)"
 
 # 1) 动画资源包 --------------------------------------------------------------
 $Frames = Join-Path $Root 'pet\frames.pck'
 if (-not (Test-Path $Frames)) {
   $Url = $Release.frames_url
-  if (-not $Url) { Fail '缺少动画资源包 pet\frames.pck，且没有下载地址。请下载“完整版”。' }
-  Say '下载动画资源包（约 400MB）…'
+  if (-not $Url) { Fail '缺少动画资源包 pet\frames.pck，且没有下载地址。请重新下载 Lulu。' }
+  Say '动画资源包不在，补下载（约 400MB）…'
   try {
     if (Get-Command curl.exe -ErrorAction SilentlyContinue) { & curl.exe -L --fail --progress-bar -o "$Frames.part" $Url; if ($LASTEXITCODE) { throw 'curl' } }
     else { Invoke-WebRequest -Uri $Url -OutFile "$Frames.part" -UseBasicParsing }
     Move-Item -Force "$Frames.part" $Frames
-  } catch { Remove-Item -Force "$Frames.part" -ErrorAction SilentlyContinue; Fail '下载失败。可以改下“完整版”（自带动画包），或检查网络后重试。' }
+  } catch { Remove-Item -Force "$Frames.part" -ErrorAction SilentlyContinue; Fail '下载失败。请检查网络后重试，或重新下载 Lulu。' }
 }
 if (Test-Path 'pet\frames.sha256') {
   $Want = (Get-Content 'pet\frames.sha256' -Raw).Trim().Split(' ')[0].ToLower()

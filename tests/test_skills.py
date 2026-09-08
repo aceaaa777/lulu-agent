@@ -537,3 +537,44 @@ def test_translate_previous_answer_reference(tmp_path):
     p = Scripted([translation('The meeting moves to Friday; budget 18650.')])
     asyncio.run(Agent(s, f, p).run(tid2))
     assert s.task(tid2)['status'] == 'completed' and json.loads(p.prompts[-1][-1]['content'])['原文'] == '会议改到周五，预算 18650。'
+
+
+# ------------------------------------------------ 2026-09-08 真机测试报告（GPT）P02 / P03 / P04
+def test_generate_direct_display_writes_no_file(tmp_path):
+    """按要点写 with 结果=直接显示 (the tag row sends no out_format): the text goes into the chat, no Word file."""
+    points = '要点：收件人为测试团队；周五下午三点在虚拟会议室A开会；讨论桌宠测试结果；请提前确认能否参加。落款测试员甲。'
+    body = '测试团队：\n\n本周五下午三点在虚拟会议室A开会，讨论桌宠测试结果，请提前确认能否参加。\n\n测试员甲'
+    s, f, tid, p = forced(tmp_path, points, 'generate', [draft(body)], options={'doc_kind': '邮件'})
+    assert s.task(tid)['status'] == 'completed' and s.task(tid)['answer'].startswith('测试团队') and '保存在' not in s.task(tid)['answer']
+    assert not [i for i in f.listing() if i['path'].endswith('.docx')]
+    s, f, tid, p = forced(tmp_path, points, 'generate', [draft(body)], options={'doc_kind': '邮件', 'out_format': 'Word'}, store=s)
+    assert '保存在 邮件.docx' in s.task(tid)['answer'] and f.read('邮件.docx').startswith('测试团队')
+
+
+PURCHASE = [['物品', '数量', '单价（元）', '金额（元）', '交付状态'], ['笔记本', 10, 12.5, 125, '已交付'], ['笔', 5, 3.2, 16, '已交付'],
+            ['文件夹', 2, 8, 16, '尚未交付'], ['合计', 17, None, 157, None], ['人工测试数据', None, None, None, None]]
+
+
+def test_table_analysis_skips_total_rows_and_keeps_the_cells(tmp_path):
+    f = Files(tmp_path/'files'); f.write('采购记录.xlsx', rows=PURCHASE)
+    stats = f.analyze('采购记录.xlsx')
+    assert stats['columns']['2:数量']['sum'] == 17 and stats['columns']['4:金额（元）']['sum'] == 157   # 34 / 314 before: the 合计 line was counted again
+    assert stats['excluded_rows'] and stats['excluded_rows'][0].startswith('合计')
+    assert '尚未交付' in stats['text'] and stats['text'].startswith('物品\t数量')
+
+
+def test_ask_file_on_excel_reads_the_rows_not_only_the_sums(tmp_path):
+    f = Files(tmp_path/'files'); f.write('采购记录.xlsx', rows=PURCHASE)
+    good = Reply(content=json.dumps({'answer': '合计 17 件、157 元；文件夹尚未交付。', 'quote': '文件夹\t2\t8\t16\t尚未交付', 'found': True}, ensure_ascii=False))
+    s, f, tid, p = forced(tmp_path, '合计数量和金额是多少？哪种物品尚未交付？', 'ask_file', [good], files=['采购记录.xlsx'])
+    assert s.task(tid)['status'] == 'completed' and '尚未交付' in s.task(tid)['answer']
+    shown = json.loads(p.prompts[-1][-1]['content'])['文件内容']
+    assert '文件夹\t2\t8\t16\t尚未交付' in shown and '总和 157' in shown and '不含合计行' in shown and 'numeric_count' not in shown
+
+
+def test_extract_from_selected_excel_does_not_ask_for_a_file(tmp_path):
+    f = Files(tmp_path/'files'); f.write('采购记录.xlsx', rows=PURCHASE)
+    rows = Reply(content=json.dumps({'rows': [{'物品': '笔记本', '数量': '10', '交付状态': '已交付'}, {'物品': '文件夹', '数量': '2', '交付状态': '尚未交付'}]}, ensure_ascii=False))
+    s, f, tid, p = forced(tmp_path, '提取三种物品，排除合计和说明行', 'extract', [rows], files=['采购记录.xlsx'], options={'columns': ['物品', '数量', '交付状态']})
+    assert s.task(tid)['status'] == 'completed', s.task(tid)['answer']
+    assert '尚未交付' in s.task(tid)['answer'] and '尚未交付' in json.loads(p.prompts[-1][-1]['content'])['原文']

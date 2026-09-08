@@ -46,10 +46,10 @@ python3 run.py                             # 浏览器面板 http://127.0.0.1:87
 
 ```
 python packaging/export_pet.py                      # 导出桌宠：build/pet/{linux,windows,macos}/ + frames.pck（首次自动下载导出模板 1.2GB）
-python packaging/build_release.py --platform macos --full      # 组装 dist/Lulu-<版本>-macos-full/ + zip + sha256（--runtime 指向冻结的 LuluRuntime 目录则不需 Python）
+python packaging/build_release.py --platform macos             # 组装 dist/Lulu-<版本>-macos/ + zip + sha256，动画包在里面（--runtime 指向冻结的 LuluRuntime 目录则不需 Python）
 ```
 
-`.github/workflows/release.yml`：推 `v*` 标签或手动运行，CI 在 ubuntu 导出桌宠、在 windows/macos 冻结运行环境、组装轻量版（安装时下载动画包）与完整版（自带），挂到草稿 Release。动画包放在名为 `assets-v1` 的 Release 里（`gh release create assets-v1 build/pet/frames.pck`）。
+`.github/workflows/release.yml`：推 `v*` 标签或手动运行，CI 在 ubuntu 导出桌宠、在 windows/macos 冻结运行环境、组装安装包（动画包永远在里面；只有一种包），挂到草稿 Release。动画包放在名为 `assets-v1` 的 Release 里（`gh release create assets-v1 build/pet/frames.pck`）。
 
 ## 尚未完成
 

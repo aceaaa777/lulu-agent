@@ -232,12 +232,14 @@ func ui_theme() -> Theme:
 			var box=StyleBoxFlat.new();box.bg_color=Color('#fdfbf6');box.border_color=Color('#dfd3bd');box.set_border_width_all(1);box.set_corner_radius_all(12)
 			if kind in ['Button','OptionButton'] or state=='tab_selected':box.bg_color=Color('#efe4cf')
 			if state in ['hover','focus']:box.bg_color=Color('#f4ead6');box.border_color=Color('#c9ab6e')
+			if kind=='ItemList' and state=='focus':box.draw_center=false  # drawn on top of the rows: border only, or the list goes blank on click
 			if state=='pressed':box.bg_color=Color('#d9b978');box.border_color=Color('#b8964e')
 			box.content_margin_left=10;box.content_margin_right=10;box.content_margin_top=7;box.content_margin_bottom=7;theme.set_stylebox(state,kind,box)
 	# List rows: a clear hover band and a solid selection so the pointer target is obvious.
 	for state in ['hovered','selected','selected_focus','cursor','cursor_unfocused']:
 		var row=StyleBoxFlat.new();row.set_corner_radius_all(8);row.content_margin_left=8;row.content_margin_right=8;row.content_margin_top=5;row.content_margin_bottom=5
 		row.bg_color=Color('#f3eadb') if state=='hovered' else Color('#e3cfa6');row.border_color=Color('#c9ab6e');row.set_border_width_all(1 if state.begins_with('cursor') else 0)
+		if state.begins_with('cursor'):row.draw_center=false  # the cursor box is painted over the row text: outline only
 		theme.set_stylebox(state,'ItemList',row)
 	theme.set_color('font_hovered_color','ItemList',Color('#3d342a'));theme.set_color('font_selected_color','ItemList',Color('#3d342a'))
 	theme.set_constant('v_separation','ItemList',6);theme.set_constant('h_separation','ItemList',8);theme.set_constant('line_separation','ItemList',4)
@@ -268,7 +270,7 @@ func make_panel():
 		var b=Button.new(); b.text=str(item[0]); b.toggle_mode=true; b.button_group=nav_group; b.alignment=HORIZONTAL_ALIGNMENT_LEFT; b.add_theme_font_size_override('font_size',16)
 		b.flat=false; b.add_theme_stylebox_override('normal',flat_box(Color(0,0,0,0))); b.add_theme_stylebox_override('hover',flat_box(Color('#ebe1cd')))
 		b.add_theme_stylebox_override('pressed',flat_box(Color('#e3cfa6'))); b.add_theme_stylebox_override('focus',flat_box(Color(0,0,0,0)))
-		var idx=int(item[1]); b.toggled.connect(func(on): if on: tabs.current_tab=idx)
+		var idx=int(item[1]); b.toggled.connect(func(on): if on: tabs.current_tab=idx; if on and idx==4: load_backend())
 		rail.add_child(b); nav_buttons.append(b)
 	var filler=Control.new(); filler.size_flags_vertical=Control.SIZE_EXPAND_FILL; rail.add_child(filler)
 	model_pill=Label.new(); model_pill.text='正在连接…'; model_pill.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART; model_pill.add_theme_font_size_override('font_size',13); model_pill.add_theme_color_override('font_color',Color('#6f6252')); rail.add_child(model_pill)
@@ -662,22 +664,39 @@ func load_messages():
 	await get_tree().process_frame; await get_tree().process_frame
 	chat_scroll.scroll_vertical=100000
 
+func fill_list(list: ItemList, rows: Array[String]):
+	# The 12-second refresh used to clear and rebuild every list, dropping whatever the person had just selected.
+	# Rebuild only when the rows changed, and put the selection back by text.
+	var same=list.item_count==rows.size()
+	if same:
+		for i in range(rows.size()):
+			if list.get_item_text(i)!=rows[i]: same=false; break
+	if same: return
+	var chosen: Array[String]=[]
+	for i in list.get_selected_items(): chosen.append(list.get_item_text(i))
+	list.clear()
+	for row in rows: list.add_item(row)
+	for i in range(rows.size()):
+		if rows[i] in chosen: list.select(i,false)
 func refresh():
 	if refreshing: return
 	refreshing=true
 	var response=await bridge.request_api(HTTPClient.METHOD_GET,'state')
 	if response.has('error'): notify_text(str(response.error)); refreshing=false; return
 	workspace=str(response.workspace); memories=response.memories; files=response.files; candidates=response.get('memory_candidates',[])
-	memory_list.clear()
-	for m in memories: memory_list.add_item(str(m.key)+'：'+str(m.value))
-	candidate_list.clear()
-	for c in candidates: candidate_list.add_item(str(c.key)+'：'+str(c.value)+'   （原话：'+str(c.quote).left(40)+'）')
+	var memory_rows: Array[String]=[]
+	for m in memories: memory_rows.append(str(m.key)+'：'+str(m.value))
+	fill_list(memory_list,memory_rows)
+	var candidate_rows: Array[String]=[]
+	for c in candidates: candidate_rows.append(str(c.key)+'：'+str(c.value)+'   （原话：'+str(c.quote).left(40)+'）')
+	fill_list(candidate_list,candidate_rows)
 	candidate_label.text='要记住这些吗？点“记住”后才会保存。' if not candidates.is_empty() else '暂时没有需要确认的记忆'
-	file_list.clear()
+	var file_rows: Array[String]=[]
 	for f in files:
 		var ext=str(f.path).get_extension().to_upper()
 		var size=float(f.bytes); var size_text=(str(snapped(size/1048576,.1))+' MB') if size>1048576 else (str(snapped(size/1024,.1))+' KB')
-		file_list.add_item('['+ext+']  '+str(f.path)+'    '+size_text)
+		file_rows.append('['+ext+']  '+str(f.path)+'    '+size_text)
+	fill_list(file_list,file_rows)
 	sessions.clear()
 	for item in response.sessions:
 		var label='新对话'
@@ -695,7 +714,9 @@ func refresh():
 		elif bool(model.get('connected',false)): notify_text('还需要完成安装。到“模型”页点“检查连接”看看。')
 		elif str(model.get('backend',''))=='ollama': notify_text('暂时还不能回答。到“模型”页点“检查连接”看看；文件和记忆仍可管理。')
 		else: notify_text('暂时连不上 '+where+'，到“模型”页点“检查连接”看看。')
-	if not backend_loaded or tabs.current_tab==4: load_backend()
+	# the settings page is loaded when opened and after 应用, never while the person may be editing it (a periodic
+	# reload used to snap the backend dropdown back to the saved value under their hands)
+	if not backend_loaded: load_backend()
 	refreshing=false
 
 func save_memory():
@@ -703,7 +724,7 @@ func save_memory():
 	notify_text(str(r.get('error','记住了'))); await refresh()
 func delete_memory():
 	if memory_list.get_selected_items().is_empty(): return
-	var confirmation=ConfirmationDialog.new(); confirmation.dialog_text='要删除这条记忆吗？目前还会同时清空对话和任务上下文，避免再次用到旧信息。文件会保留。'; panel.add_child(confirmation)
+	var confirmation=ConfirmationDialog.new(); confirmation.dialog_text='要忘掉这条记忆吗？\n用到过它的那几条对话会一并删除；为保证不再用到，之前的对话也不再作为后面回答的依据（记录还在，只是不参与）。文件不受影响。'; panel.add_child(confirmation)
 	var key=str(memories[memory_list.get_selected_items()[0]].key)
 	confirmation.confirmed.connect(func():
 		var r=await bridge.request_api(HTTPClient.METHOD_DELETE,'memory',{'key':key}); notify_text(str(r.get('error','已删除这条记忆'))); await load_messages(); await refresh(); confirmation.queue_free())

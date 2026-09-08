@@ -25,6 +25,12 @@ def fake_pet(tmp_path, platform):
     return pet, frames
 
 
+def test_frames_are_mandatory(tmp_path):
+    pet, frames = fake_pet(tmp_path, 'windows'); frames.unlink()
+    result = subprocess.run([sys.executable, str(ROOT / 'packaging/build_release.py'), '--platform', 'windows', '--pet', str(pet), '--frames', str(frames), '--out', str(tmp_path / 'dist'), '--no-zip'], capture_output=True, text=True, cwd=ROOT)
+    assert result.returncode != 0 and '动画资源包' in result.stdout + result.stderr
+
+
 def build(tmp_path, platform, *extra):
     pet, frames = fake_pet(tmp_path, platform)
     out = tmp_path / 'dist'
@@ -34,8 +40,9 @@ def build(tmp_path, platform, *extra):
     return next(out.glob('Lulu-*'))
 
 
-def test_release_layout_windows_full(tmp_path):
-    folder = build(tmp_path, 'windows', '--full', '--frames-url', 'https://example.invalid/frames.pck')
+def test_release_layout_windows(tmp_path):
+    folder = build(tmp_path, 'windows', '--frames-url', 'https://example.invalid/frames.pck')
+    assert folder.name == 'Lulu-' + folder.name.split('-')[1] + '-windows'   # no edition suffix: there is one kind of package
     assert (folder / '安装并启动 Lulu.cmd').exists() and (folder / 'tools/安装并启动.ps1').exists()
     assert (folder / 'pet/Lulu.exe').exists() and (folder / 'pet/frames.pck').exists() and (folder / 'pet/frames.sha256').exists()
     assert (folder / 'agent/lulu/server.py').exists() and (folder / 'agent/entry.py').exists() and (folder / 'agent/安装本地模型.ps1').exists()
@@ -43,14 +50,15 @@ def test_release_layout_windows_full(tmp_path):
     release = json.loads((folder / 'release.json').read_text(encoding='utf-8'))
     assert release['edition'] == 'full' and release['platform'] == 'windows' and release['runtime'] == 'source' and release['frames_url'].startswith('https://')
     readme = (folder / '先看这里.md').read_text(encoding='utf-8')
-    assert '完整版' in readme and 'SmartScreen' in readme and '{' not in readme
+    assert '已经在包里' in readme and 'SmartScreen' in readme and '{' not in readme and '轻量版' not in readme
     assert json.loads((folder / 'agent/config.json').read_text(encoding='utf-8')) == {'backend': 'ollama', 'tier': 'auto', 'think': False}
 
 
-def test_release_layout_macos_lite_with_runtime(tmp_path):
+def test_release_layout_macos_lite_experiment_with_runtime(tmp_path):
     runtime = tmp_path / 'LuluRuntime'
     runtime.mkdir(); (runtime / 'LuluRuntime').write_bytes(b'\xcf\xfa\xed\xfe'); (runtime / '_internal').mkdir()
-    folder = build(tmp_path, 'macos', '--runtime', str(runtime))
+    folder = build(tmp_path, 'macos', '--lite', '--runtime', str(runtime))
+    assert folder.name.endswith('-lite')
     assert (folder / 'pet/Lulu.app/Contents/MacOS/Lulu').exists() and not (folder / 'pet/frames.pck').exists()
     assert (folder / 'runtime/LuluRuntime/LuluRuntime').exists()
     installer = folder / '安装并启动 Lulu.command'

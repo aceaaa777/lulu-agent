@@ -1,15 +1,16 @@
 """Assemble a release folder + zip + sha256 for one platform.
 
-    python packaging/build_release.py --platform macos              # 轻量版 (frames downloaded by the installer)
-    python packaging/build_release.py --platform windows --full     # 完整版 (frames.pck inside)
-    python packaging/build_release.py --platform macos --runtime build/runtime/LuluRuntime --full
+    python packaging/build_release.py --platform macos                                   # 源码版（需要 Python 3.11+）
+    python packaging/build_release.py --platform windows --runtime build/runtime/LuluRuntime   # 自带运行环境
 
-Inputs: build/pet/<platform>/ from packaging/export_pet.py (or --pet), build/pet/frames.pck for --full (or --frames),
-and optionally a PyInstaller LuluRuntime folder (--runtime); without it the package is a 源码版 that needs Python 3.11+.
+The animation frames (pet/frames.pck, the whole point of Lulu) are always inside the package. `--lite` leaves them out
+and lets the installer download them — kept only for experiments, never for what users download.
+Inputs: build/pet/<platform>/ and build/pet/frames.pck from packaging/export_pet.py (or --pet / --frames), and
+optionally a PyInstaller LuluRuntime folder (--runtime); without it the package is a 源码版 that needs Python 3.11+.
 Layout of the result:
-    Lulu-<version>-<platform>-<edition>/
+    Lulu-<version>-<platform>/
         安装并启动 Lulu.command | .cmd (+ tools/安装并启动.ps1)   先看这里.md   release.json   LICENSE / notices
-        pet/   Lulu.app | Lulu.exe | Lulu.x86_64, frames.sha256, [frames.pck]
+        pet/   Lulu.app | Lulu.exe | Lulu.x86_64, frames.pck, frames.sha256
         runtime/LuluRuntime/   (when --runtime given)
         agent/ lulu/, entry.py, run.py, desktop_launcher.py, requirements, config.json, 安装本地模型.*, 后端体检.*
 """
@@ -17,6 +18,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import shutil
 import stat
 import sys
@@ -25,8 +27,8 @@ import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
-from lulu.server import VERSION  # noqa: E402
+# read VERSION without importing the server (this script must run on a bare Python, no aiohttp installed)
+VERSION = re.search(r"^VERSION\s*=\s*'([^']+)'", (ROOT / 'lulu/server.py').read_text(encoding='utf-8'), re.M).group(1)
 
 PLATFORMS = {
     'macos': {'name': 'macOS（Apple 芯片 / Intel）', 'pet': ['Lulu.zip'], 'installer': '安装并启动 Lulu.command', 'data_dir': '~/Library/Application Support/Lulu',
@@ -77,7 +79,7 @@ def zip_folder(folder, target):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--platform', choices=PLATFORMS, required=True)
-    parser.add_argument('--full', action='store_true', help='完整版：把 frames.pck 放进包里')
+    parser.add_argument('--lite', action='store_true', help='实验用：不放 frames.pck，安装时下载。用户下载的包永远不用这个')
     parser.add_argument('--pet', type=Path, help='导出的桌宠目录（默认 build/pet/<platform>）')
     parser.add_argument('--frames', type=Path, default=ROOT / 'build/pet/frames.pck')
     parser.add_argument('--frames-url', default=os.environ.get('LULU_FRAMES_URL', ''), help='轻量版安装时下载 frames.pck 的地址')
@@ -87,9 +89,10 @@ def main():
     args = parser.parse_args()
     spec = PLATFORMS[args.platform]
     pet_dir = args.pet or ROOT / 'build/pet' / args.platform
+    args.full = not args.lite
     edition = 'full' if args.full else 'lite'
-    edition_name = '完整版' if args.full else '轻量版'
-    name = f'Lulu-{VERSION}-{args.platform}-{edition}'
+    edition_name = '' if args.full else '轻量版（安装时下载动画包）'
+    name = f'Lulu-{VERSION}-{args.platform}' + ('' if args.full else '-lite')
     target = args.out / name
     if target.exists():
         shutil.rmtree(target)
@@ -122,7 +125,7 @@ def main():
         if args.full:
             shutil.copy2(args.frames, target / 'pet/frames.pck')
     elif args.full:
-        raise SystemExit(f'完整版需要 {args.frames}（动画资源包）：先运行 packaging/export_pet.py --targets frames，或从 Release 下载。')
+        raise SystemExit(f'缺少 {args.frames}（动画资源包，Lulu 的核心）：先运行 packaging/export_pet.py --targets frames，或从 Release 下载。')
     else:
         print(f'提示：没有 {args.frames}，轻量版将不带校验值，安装时只能信任下载结果。')
     if not args.full and not args.frames_url:
@@ -160,7 +163,7 @@ def main():
     (target / 'release.json').write_text(json.dumps(release, ensure_ascii=False, indent=2), encoding='utf-8')
     readme = (installer_dir / '先看这里.md').read_text(encoding='utf-8').format(
         version=VERSION, platform_name=spec['name'], edition_name=edition_name, installer=spec['installer'],
-        frames_line='动画资源包（约 400MB）已经在包里，不用下载。' if args.full else '下载动画资源包（约 400MB，桌宠的所有动作）。网络不好的话可以改下“完整版”，它自带这个包。',
+        frames_line='检查动画资源包（已经在包里，不用下载；万一被删了会自动补）。' if args.full else '下载动画资源包（约 400MB，桌宠的所有动作）。',
         runtime_line='运行环境已经打在包里，不需要装 Python。' if args.runtime else '这是源码版，需要电脑上有 Python 3.11 或更新版本（脚本会检查并提示）。',
         security_lines='\n'.join('- ' + line for line in spec['security']), data_dir=spec['data_dir'], build_date=release['built'])
     (target / '先看这里.md').write_text(readme, encoding='utf-8')

@@ -10,15 +10,15 @@ say() { printf '\n== %s\n' "$*"; }
 fail() { printf '\n!! %s\n' "$*"; read '?按回车关闭'; exit 1; }
 json_field() { python3 -c "import json,sys;print(json.load(open(sys.argv[1])).get(sys.argv[2],''))" "$1" "$2" 2>/dev/null; }
 
-say "Lulu $(json_field release.json version) · $(json_field release.json edition_name)"
+say "Lulu $(json_field release.json version) $(json_field release.json edition_name)"
 
 # 1) 动画资源包 --------------------------------------------------------------
 FRAMES="pet/frames.pck"
 if [[ ! -f "$FRAMES" ]]; then
   URL="$(json_field release.json frames_url)"
-  [[ -n "$URL" ]] || fail "缺少动画资源包 pet/frames.pck，且没有下载地址。请下载“完整版”。"
-  say "下载动画资源包（约 400MB）…"
-  curl -L --fail --progress-bar -o "$FRAMES.part" "$URL" || { rm -f "$FRAMES.part"; fail "下载失败。可以改下“完整版”（自带动画包），或检查网络后重试。"; }
+  [[ -n "$URL" ]] || fail "缺少动画资源包 pet/frames.pck，且没有下载地址。请重新下载 Lulu。"
+  say "动画资源包不在，补下载（约 400MB）…"
+  curl -L --fail --progress-bar -o "$FRAMES.part" "$URL" || { rm -f "$FRAMES.part"; fail "下载失败。请检查网络后重试，或重新下载 Lulu。"; }
   mv "$FRAMES.part" "$FRAMES"
 fi
 if [[ -f pet/frames.sha256 ]]; then

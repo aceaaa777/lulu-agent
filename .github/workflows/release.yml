@@ -1,5 +1,5 @@
 name: release
-# 打包：桌宠导出（Linux 上一次导出三个平台）+ Windows / macOS 各自冻结 Python 运行环境 + 组装 轻量版/完整版。
+# 打包：桌宠导出（Linux 上一次导出三个平台）+ Windows / macOS 各自冻结 Python 运行环境 + 组装（动画包永远在包里）。
 # 触发：推 v* 标签（自动挂到该标签的 Release），或手动运行（产物在 Actions 页面下载）。
 # 动画资源包 frames.pck 不在仓库里：放在名为 assets-v1 的 Release 里（gh release create assets-v1 frames.pck）。
 on:
@@ -95,16 +95,17 @@ jobs:
         with:
           name: runtime-macos
           path: build/runtime/macos
-      - name: 取动画资源包（Release assets-v1）
+      - name: 取动画资源包（Release assets-v1，必需）
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release download assets-v1 --pattern frames.pck --dir build/pet || echo "没有 assets-v1/frames.pck：只打轻量版"
-      - name: 组装
+        run: |
+          gh release download assets-v1 --pattern frames.pck --dir build/pet
+          test -f build/pet/frames.pck || { echo "没有 assets-v1/frames.pck：先 gh release create assets-v1 build/pet/frames.pck"; exit 1; }
+      - name: 组装（动画包在里面）
         run: |
           chmod +x build/runtime/macos/LuluRuntime build/pet/linux/Lulu.x86_64 || true
           for platform in windows macos; do
             python packaging/build_release.py --platform $platform --runtime build/runtime/$platform --frames-url "$FRAMES_URL"
-            if [ -f build/pet/frames.pck ]; then python packaging/build_release.py --platform $platform --runtime build/runtime/$platform --full --frames-url "$FRAMES_URL"; fi
           done
           ls -la dist/*.zip dist/*.sha256
       - uses: actions/upload-artifact@v4

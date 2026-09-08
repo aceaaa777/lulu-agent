@@ -53,6 +53,18 @@ func run():
 		var title = pet.tabs.get_tab_title(tab)
 		if title == '设置': await pet.load_backend()
 		await shot('page-' + title)
+		if title == '文件' and pet.file_list.item_count > 0:
+			# P01 (2026-09-08 真机): a focused list used to paint over its rows; click a row and keep focus on it
+			pet.file_list.grab_focus(); pet.file_list.select(0); pet.file_list.item_selected.emit(0)
+			await shot('page-文件-选中一行')
+		if title == '设置':
+			# P05: changing the backend dropdown must survive the periodic poll until 应用 is pressed
+			pet.backend_option.select(1); pet.backend_option.item_selected.emit(1)
+			await shot('page-设置-改成API未应用')
+			await pet.poll(); await pet.poll()
+			print('SETTINGS_KEEPS_EDIT ', pet.backend_option.selected == 1)
+			await shot('page-设置-轮询后')
+			pet.backend_option.select(0); pet.backend_option.item_selected.emit(0)
 	pet.go_chat()
 	# the question window and the record window
 	pet.question_body.text = '还差一点信息\n\n要把 报告.md 转成什么格式？'

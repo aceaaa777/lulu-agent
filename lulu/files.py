@@ -2,6 +2,7 @@
 import csv
 import io
 import json
+import re
 import math
 import os
 import shutil
@@ -243,14 +244,26 @@ class Files:
         target = self.path(meta['path'])
         return self.commit(target,lambda temp:shutil.copy2(folder/bid,temp))
 
+    TOTAL_ROW = re.compile(r'^\s*(?:合计|总计|小计|总数|总额|汇总|累计|total|sum|subtotal)\s*[:：]?\s*$', re.I)
+
     def analyze(self, name):
+        """Column statistics over the data rows. Rows whose first cell is a 合计/总计/小计 label are left out of the
+        numbers (otherwise a spreadsheet's own total line doubles every sum) and reported in `excluded_rows`;
+        `text` carries the rows themselves so a reader can answer from the actual cells, not just the sums."""
         rows = self.table(name)
         if not rows:
-            return {'rows':0}
-        result = {'rows':len(rows)-1,'columns':{}}
+            return {'rows':0,'text':''}
+        data, excluded = [], []
+        for row in rows[1:]:
+            first = str(row[0]).strip() if row and row[0] is not None else ''
+            (excluded if self.TOTAL_ROW.match(first) else data).append(row)
+        result = {'rows':len(data),'columns':{}}
+        if excluded:
+            result['excluded_rows'] = ['\t'.join('' if c is None else str(c) for c in r) for r in excluded]
+        result['text'] = '\n'.join('\t'.join('' if c is None else str(c) for c in r) for r in rows)[:8000]
         for index, header in enumerate(rows[0]):
             values, missing = [],0
-            for row in rows[1:]:
+            for row in data:
                 val = row[index] if index<len(row) else None
                 if val in (None,''):
                     missing+=1
