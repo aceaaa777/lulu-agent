@@ -1,14 +1,37 @@
-# Lulu Agent 0.9
+# Lulu Agent
 
-2026-09-07 起，执行核心是 Lulu 自己的循环（`lulu/loop.py`），不再依赖 DeepSeek Harness、Node 和 nanobot。2026-09-08 起（0.6），**Lulu 是壳，模型是设置**：本地 Ollama（Qwen3 4B 两模型 / 8B 混合）、OpenAI 兼容 API、`claude -p`、任意命令行四种后端一个接口（`lulu/backends.py`），工作窗口“模型”页切换、体检、填钥匙、开关深度思考。记忆、任务、证据、文件全部保存在本机 SQLite 与工作目录。
+一只住在桌面右下角的小桌宠，旁边是一个工作窗口。它帮你做办公室里最常见的几件小事，模型跑在你自己的电脑上（也可以接你自己的 API 或 `claude -p`），对话、笔记、提醒和生成的文件都只留在本机。
 
-## 技能表（0.5）
+**能做的事（工作窗口里点标签）：** 翻译 · 总结 · 改写润色 · 问文件 · 提取成表 · 按要点写 · 转格式 · 记一下 · 提醒 · 查一下 · 聊聊天。
+
+**模型：** 默认本机 Ollama 上的 Qwen3（16GB 内存以上用 8B 混合模型，以下用 4B 双模型），推理默认关、可在设置里打开；也可以切到 OpenAI 兼容 API（通义千问 / DeepSeek / OpenRouter / LM Studio…）、`claude -p`，或任意命令行工具。走接口时窗口里会常驻提示"资料会离开本机"。
+
+## 安装
+
+到 [Releases](../../releases) 下载你系统的 zip，解压到任意位置，双击：
+
+- macOS：`安装并启动 Lulu.command`（第一次系统会提示"无法验证开发者"，脚本会自动处理；仍被拦就到 系统设置 → 隐私与安全性 点"仍要打开"）
+- Windows：`安装并启动 Lulu.cmd`（SmartScreen 会拦一次：更多信息 → 仍要运行）
+
+第一次运行会问你要不要下载本地模型（需要先装 [Ollama](https://ollama.com/download)，模型 2.5–5GB）。不装也能打开，在设置页改用 API。之后每次双击同一个文件就是启动。删掉文件夹就是卸载；你的数据在 `~/Library/Application Support/Lulu`（macOS）/ `%LOCALAPPDATA%\Lulu`（Windows）。
+
+包里自带全部动画（约 400MB）和运行环境，不需要装 Python。详见包里的 `先看这里.md`。
+
+## 现状
+
+0.9（2026-09）：macOS 包已在真机走过完整测试；Windows 包由 CI 产出，尚未在真机验收。复杂版式的文档转换、扫描版 PDF 的 OCR 暂不支持；本地小模型在长文和多步任务上会有错，程序会尽量把"没查到""没核对过"如实告诉你，而不是编。欢迎提 issue。
+
+---
+
+## 给开发者
+
+### 技能表（0.5 起）
 
 Lulu 只做九件事（0.6 加了翻译），每件事是一条固定程序，模型只在其中一两个槽位出场（`lulu/skills.py`）：转换格式、生成文档、总结/提取、记录（笔记或长期记忆）、提醒/闹钟（`lulu/timeparse.py` 解析中文时间与重复）、查询（本地文件 + 联网核对）、记忆问答（我记得什么 / 忘掉某条）、闲聊。路由规则优先（`route_rules()`），决定性句式命中就不调分类模型；问句一律算查询（有搜索钥匙就联网，没资料就按模型知识回答并标注）；生成文档必须先有材料或要点，否则零模型调用直接问；缺槽位（哪个文件、什么格式、什么时间、忘掉哪条）时程序发定向问题，带选项，用户答复后同一任务从原地继续。两件事写在一句里（既要记住又要生成文件）走通用循环兜底。
 
 模型只剩五种提示词：起草、摘要、字段提取、联网事实核对、记忆命名，每种都有 schema 和程序验收（数字必须有来源、原文标签事实必须保留、引用必须逐字命中）。对话结束后程序按原话抽取"值得记住的事"作为候选，用户在记忆页采纳才会存。
 
-## 这一版如何运行
+### 这一版如何运行
 
 每个任务按阶段推进并逐步落库：`classifying`（一次 schema 约束的意图分类，程序用规则校正）→ `planning`（证据需求与完成条件）→ `gathering`（固定流程、读取用户提到的文件、实时行情适配器）→ `executing`（模型工具循环，每步写入 `task_steps`）→ 验收 → 完成。任一阶段缺少必需信息时进入持久的 `awaiting_input`，用户答复后同一个任务从中断的阶段继续；已生成且哈希未变的产物不会重做。
 
@@ -18,13 +41,13 @@ Lulu 只做九件事（0.6 加了翻译），每件事是一条固定程序，�
 
 超时与上下文预算由 `lulu/budget.py` 按实测速度推导（`POST /api/budget/measure`），内存低于 12GB 的机器自动落到 A 档（4096 上下文、更短提示词）。
 
-## 目录
+### 目录
 
 - `lulu/loop.py` 循环与阶段；`lulu/intent.py` 意图；`lulu/writer.py` 起草与验收；`lulu/tools.py` 本地能力；`lulu/models.py` 模型适配器（Ollama / OpenAI 兼容）；`lulu/budget.py` 预算；`lulu/research.py` 联网检索与事实核对；`lulu/websearch.py` 搜索引擎与抓取；`lulu/store.py` SQLite（FTS5 记忆检索、精准删除、任务步骤与证据）；`lulu/server.py` 本机 API。
 - `desktop/` Godot 窗口与桌宠：工作窗口的对话页有标签行（翻译 · 总结 · 改写润色 · 问文件 · 提取成表 · 按要点写 · 转格式 · 记一下 · 提醒 · 查一下 · 聊聊天）+ 选文件；点标签锁定技能。0.7 起浏览器面板已移除，只有桌面版。
 - `tests/` 脚本模型回归；`tests/live_acceptance.py` 真实模型验收（低配报告 6 用例 + 两次原始失败 + 续办）。
 
-## 开发环境
+### 开发环境
 
 Python 3.11+，`pip install -r requirements.txt -c constraints.txt`；本地模型用 `安装本地模型.command`（Mac）或 `安装本地模型.cmd`（Windows）按内存拉 Qwen3 档位。走 API / `claude -p` / 其他命令行时不需要 Ollama。
 
@@ -36,11 +59,11 @@ python3 -m lulu.websearch 今日BTC价格        # 看每个搜索引擎在这�
 python3 run.py                             # 浏览器面板 http://127.0.0.1:8766
 ```
 
-## 配置
+### 配置
 
 `config.json`（0.6）：`{"backend":"ollama|api|claude_cli|cli","tier":"auto|4b|8b|custom","think":false,"ollama":{…},"api":{"preset":"dashscope","base":…,"model":…,"think_param":"enable_thinking"},"claude_cli":{"command":"claude"},"cli":{"command":"codex exec … {output_file}"},"search":{"provider":"auto|bocha|tavily|brave|engines|none"}}`。旧版 `{"model":"qwen2.5:7b"}` 仍能读（自动当作自定义档位）。钥匙一律存 `data/secrets.json`（0600）：`python -m lulu.backends secret api_key|bocha_key|tavily_key|brave_key`。命令行：`python -m lulu.backends status|probe|models|set backend=api api.preset=deepseek`；`python -m lulu.searchapi 今日新闻` 试搜索。走接口或命令行意味着请求和资料离开本机，状态栏和“模型”页会常驻提示。
 
-## 打包（0.9）
+### 打包
 
 桌宠是 Godot 导出版，动画帧单独打成 `frames.pck`；Python 运行环境用 PyInstaller 冻结；用户拿到的是一个文件夹，双击 `安装并启动 Lulu.command`（macOS）/ `安装并启动 Lulu.cmd`（Windows）。
 
@@ -51,6 +74,6 @@ python packaging/build_release.py --platform macos             # 组装 dist/Lul
 
 `.github/workflows/release.yml`：推 `v*` 标签或手动运行，CI 在 ubuntu 导出桌宠、在 windows/macos 冻结运行环境、组装安装包（动画包永远在里面；只有一种包），挂到草稿 Release。动画包放在名为 `assets-v1` 的 Release 里（`gh release create assets-v1 build/pet/frames.pck`）。
 
-## 尚未完成
+### 尚未完成
 
 Windows / macOS 真机安装验收（签名提示、SmartScreen）；LICENSE；A 档（3B/4B）模型接入与复测；记忆自动抽取（当前只保存用户明确要求记住的内容）；DOCX 转 PDF 仍为文本重建。
