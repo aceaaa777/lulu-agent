@@ -1,0 +1,125 @@
+name: release
+# 打包：桌宠导出（Linux 上一次导出三个平台）+ Windows / macOS 各自冻结 Python 运行环境 + 组装 轻量版/完整版。
+# 触发：推 v* 标签（自动挂到该标签的 Release），或手动运行（产物在 Actions 页面下载）。
+# 动画资源包 frames.pck 不在仓库里：放在名为 assets-v1 的 Release 里（gh release create assets-v1 frames.pck）。
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+env:
+  GODOT_VERSION: 4.4.1
+  FRAMES_URL: https://github.com/${{ github.repository }}/releases/download/assets-v1/frames.pck
+jobs:
+  pet:
+    name: 桌宠导出（Godot）
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: 缓存导出模板
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/godot/export_templates/${{ env.GODOT_VERSION }}.stable
+          key: godot-templates-${{ env.GODOT_VERSION }}
+      - name: 下载 Godot
+        run: |
+          curl -sSL -o godot.zip https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip
+          unzip -q godot.zip && chmod +x Godot_v${GODOT_VERSION}-stable_linux.x86_64
+      - name: 导出三个平台
+        run: GODOT=$PWD/Godot_v${GODOT_VERSION}-stable_linux.x86_64 python packaging/export_pet.py --targets linux,windows,macos
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pet
+          path: build/pet
+          retention-days: 7
+  runtime:
+    name: 运行环境（${{ matrix.os }}）
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            platform: windows
+            flags: --noconsole
+          - os: macos-latest
+            platform: macos
+            flags: ''
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r requirements.txt -c constraints.txt pyinstaller==6.19.0
+      - name: 冻结 LuluRuntime
+        run: python -m PyInstaller --noconfirm --onedir --name LuluRuntime ${{ matrix.flags }} --distpath build/runtime --workpath build/runtime-work entry.py
+      - name: 冒烟：冻结后的后端能启动
+        shell: bash
+        env:
+          LULU_FAKE_MODEL: '1'
+          LULU_NO_LOCATE: '1'
+        run: |
+          ./build/runtime/LuluRuntime/LuluRuntime --server --no-browser --port 8798 --data-dir ./rt-home > rt.log 2>&1 &
+          for i in $(seq 1 60); do [ -f rt-home/data/connection.json ] && break; sleep 0.5; done
+          test -f rt-home/data/connection.json || { cat rt.log; exit 1; }
+          python - <<'PY'
+          import json,urllib.request
+          c=json.load(open('rt-home/data/connection.json'))
+          req=urllib.request.Request(f"http://127.0.0.1:{c['port']}/api/health",headers={'X-Lulu-Token':c['token']})
+          print(json.load(urllib.request.urlopen(req,timeout=5)))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: runtime-${{ matrix.platform }}
+          path: build/runtime/LuluRuntime
+          retention-days: 7
+  package:
+    name: 组装安装包
+    needs: [pet, runtime]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          name: pet
+          path: build/pet
+      - uses: actions/download-artifact@v4
+        with:
+          name: runtime-windows
+          path: build/runtime/windows
+      - uses: actions/download-artifact@v4
+        with:
+          name: runtime-macos
+          path: build/runtime/macos
+      - name: 取动画资源包（Release assets-v1）
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release download assets-v1 --pattern frames.pck --dir build/pet || echo "没有 assets-v1/frames.pck：只打轻量版"
+      - name: 组装
+        run: |
+          chmod +x build/runtime/macos/LuluRuntime build/pet/linux/Lulu.x86_64 || true
+          for platform in windows macos; do
+            python packaging/build_release.py --platform $platform --runtime build/runtime/$platform --frames-url "$FRAMES_URL"
+            if [ -f build/pet/frames.pck ]; then python packaging/build_release.py --platform $platform --runtime build/runtime/$platform --full --frames-url "$FRAMES_URL"; fi
+          done
+          ls -la dist/*.zip dist/*.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Lulu-packages
+          path: |
+            dist/*.zip
+            dist/*.sha256
+          retention-days: 14
+      - name: 挂到 Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*.zip
+            dist/*.sha256
+          draft: true
+          generate_release_notes: true

@@ -1,4 +1,4 @@
-# Lulu Agent 0.5 开发版（技能表）
+# Lulu Agent 0.9
 
 2026-09-07 起，执行核心是 Lulu 自己的循环（`lulu/loop.py`），不再依赖 DeepSeek Harness、Node 和 nanobot。2026-09-08 起（0.6），**Lulu 是壳，模型是设置**：本地 Ollama（Qwen3 4B 两模型 / 8B 混合）、OpenAI 兼容 API、`claude -p`、任意命令行四种后端一个接口（`lulu/backends.py`），工作窗口“模型”页切换、体检、填钥匙、开关深度思考。记忆、任务、证据、文件全部保存在本机 SQLite 与工作目录。
 
@@ -40,6 +40,17 @@ python3 run.py                             # 浏览器面板 http://127.0.0.1:87
 
 `config.json`（0.6）：`{"backend":"ollama|api|claude_cli|cli","tier":"auto|4b|8b|custom","think":false,"ollama":{…},"api":{"preset":"dashscope","base":…,"model":…,"think_param":"enable_thinking"},"claude_cli":{"command":"claude"},"cli":{"command":"codex exec … {output_file}"},"search":{"provider":"auto|bocha|tavily|brave|engines|none"}}`。旧版 `{"model":"qwen2.5:7b"}` 仍能读（自动当作自定义档位）。钥匙一律存 `data/secrets.json`（0600）：`python -m lulu.backends secret api_key|bocha_key|tavily_key|brave_key`。命令行：`python -m lulu.backends status|probe|models|set backend=api api.preset=deepseek`；`python -m lulu.searchapi 今日新闻` 试搜索。走接口或命令行意味着请求和资料离开本机，状态栏和“模型”页会常驻提示。
 
+## 打包（0.9）
+
+桌宠是 Godot 导出版，动画帧单独打成 `frames.pck`；Python 运行环境用 PyInstaller 冻结；用户拿到的是一个文件夹，双击 `安装并启动 Lulu.command`（macOS）/ `安装并启动 Lulu.cmd`（Windows）。
+
+```
+python packaging/export_pet.py                      # 导出桌宠：build/pet/{linux,windows,macos}/ + frames.pck（首次自动下载导出模板 1.2GB）
+python packaging/build_release.py --platform macos --full      # 组装 dist/Lulu-<版本>-macos-full/ + zip + sha256（--runtime 指向冻结的 LuluRuntime 目录则不需 Python）
+```
+
+`.github/workflows/release.yml`：推 `v*` 标签或手动运行，CI 在 ubuntu 导出桌宠、在 windows/macos 冻结运行环境、组装轻量版（安装时下载动画包）与完整版（自带），挂到草稿 Release。动画包放在名为 `assets-v1` 的 Release 里（`gh release create assets-v1 build/pet/frames.pck`）。
+
 ## 尚未完成
 
-Windows 安装包与低配实机验收；A 档（3B/4B）模型接入与复测；记忆自动抽取（当前只保存用户明确要求记住的内容）；DOCX 转 PDF 仍为文本重建。
+Windows / macOS 真机安装验收（签名提示、SmartScreen）；LICENSE；A 档（3B/4B）模型接入与复测；记忆自动抽取（当前只保存用户明确要求记住的内容）；DOCX 转 PDF 仍为文本重建。

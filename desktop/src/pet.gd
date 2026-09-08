@@ -7,6 +7,7 @@ var manifest: Dictionary
 const FrameStore=preload('res://src/frame_store.gd')
 const AnimationLab=preload('res://src/animation_lab.gd')
 var frames
+var frames_missing := false
 var transition_material: ShaderMaterial
 var lab
 var pet_scale=1.0
@@ -176,6 +177,7 @@ func _ready():
 	get_window().content_scale_aspect=Window.CONTENT_SCALE_ASPECT_KEEP
 	manifest = JSON.parse_string(FileAccess.get_file_as_string('res://assets/clips.json'))
 	animation = AnimationState.new(manifest)
+	frames_missing = not load_frame_pack()
 	frames=FrameStore.new(manifest)
 	display_frame=int(manifest.idle[0]);blend_from=display_frame
 	get_window().size=Vector2i(528,420)
@@ -202,6 +204,21 @@ func _ready():
 	if '--review' in OS.get_cmdline_user_args(): panel.show()
 	Engine.max_fps=30
 	if not OS.get_environment('LULU_CAPTURE').is_empty():call_deferred('capture_preview')
+func load_frame_pack() -> bool:
+	# Exported builds keep the animation frames (~360MB) outside the main program as frames.pck, downloaded by the
+	# install script; the development tree has them under res://assets already. Returns false when neither is there.
+	if FileAccess.file_exists('res://assets/optimized.json'):return true
+	var candidates: Array[String]=[]
+	var given=OS.get_environment('LULU_FRAMES')
+	if not given.is_empty():candidates.append(given)
+	var exe_dir=OS.get_executable_path().get_base_dir()
+	for rel in ['frames.pck','../frames.pck','../Resources/frames.pck','../../frames.pck','../../../frames.pck']:
+		candidates.append(exe_dir.path_join(rel).simplify_path())
+	for path in candidates:
+		if FileAccess.file_exists(path) and ProjectSettings.load_resource_pack(path,false):
+			print('frames: ',path);return FileAccess.file_exists('res://assets/optimized.json')
+	push_warning('frames.pck not found; looked in '+str(candidates))
+	return false
 func window_background(window: Window):
 	var bg=ColorRect.new();bg.color=Color('#faf7f1');bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT);window.add_child(bg)
 func ui_theme() -> Theme:
@@ -555,7 +572,8 @@ func _process(delta):
 	blend_time+=delta
 	var phase=current.phase
 	pet_status.text='我在，随时叫我'
-	if phase.begins_with('read_'):pet_status.text='安静陪你看书'
+	if frames_missing:pet_status.text='缺少动画资源包，请重新运行安装脚本'
+	elif phase.begins_with('read_'):pet_status.text='安静陪你看书'
 	elif phase.ends_with('_loop') or phase=='sleep_enter':pet_status.text='点点我，或拖一下叫醒我～'
 	elif phase.ends_with('_exit'):pet_status.text='等一下，我收拾好就来～'
 	elif phase=='goodbye':pet_status.text='下次见～'
@@ -739,9 +757,11 @@ func capture_preview():
 	DirAccess.make_dir_recursive_absolute(folder)
 	panel.get_texture().get_image().save_png(folder.path_join('panel.png'))
 	get_viewport().get_texture().get_image().save_png(folder.path_join('pet.png'))
-	var info={'panel_window':panel.get_window_id(),'pet_window':get_window().get_window_id(),'pet_transparent':get_viewport().transparent_bg,'panel_transparent':panel.transparent,'connected':connected}
+	var info={'panel_window':panel.get_window_id(),'pet_window':get_window().get_window_id(),'pet_transparent':get_viewport().transparent_bg,'panel_transparent':panel.transparent,'connected':connected,
+		'frames_missing':frames_missing,'frames_loaded':frames.textures.size(),'executable':OS.get_executable_path(),'version':Engine.get_version_info().string}
 	var f=FileAccess.open(folder.path_join('windows.json'),FileAccess.WRITE)
 	if f: f.store_string(JSON.stringify(info))
+	if not OS.get_environment('LULU_CAPTURE_QUIT').is_empty(): get_tree().quit()
 
 func make_agent_dialogs():
 	record_window=Window.new();record_window.title='Lulu · 执行记录';record_window.size=Vector2i(760,540);record_window.min_size=Vector2i(600,420);record_window.close_requested.connect(func():record_window.hide());add_child(record_window);window_background(record_window)

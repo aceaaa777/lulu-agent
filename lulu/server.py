@@ -15,7 +15,7 @@ from .files import Files
 from .store import Store
 from .companion import Companion
 
-VERSION='0.6-preview'
+VERSION='0.9'
 
 
 def create_app(home, port=8766, provider=None, assets=None):

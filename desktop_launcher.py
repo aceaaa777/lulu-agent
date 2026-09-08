@@ -16,6 +16,8 @@ from filelock import FileLock, Timeout
 # urllib obeys the system proxy by default; with a VPN/proxy switched on, a loopback health check would be sent to the
 # proxy and time out, and the launcher would keep "restarting" a perfectly healthy agent. Always go direct.
 _direct=urllib.request.build_opener(urllib.request.ProxyHandler({}))
+# child processes of a windowed (no console) runtime on Windows must not pop up console windows of their own
+_quiet={'creationflags':subprocess.CREATE_NO_WINDOW} if os.name=='nt' else {}
 
 
 def healthy(port, token=None, heartbeat=None):
@@ -38,6 +40,34 @@ def stop(process):
         except subprocess.TimeoutExpired: process.kill(); process.wait(timeout=5)
 
 
+def package_root(start):
+    """The folder that holds this Lulu: walks up from `start` to the first folder with a pet/ or desktop/ inside, so a
+    frozen runtime placed in runtime/LuluRuntime/ still finds the package it belongs to."""
+    start=Path(start).resolve()
+    for folder in [start,*start.parents]:
+        if (folder/'pet').is_dir() or (folder/'desktop').is_dir(): return folder
+    return start
+
+
+def find_pet(root):
+    """The pet program: an exported build under pet/ (release packages) before the Godot editor running the source tree
+    (development). Returns (command list, description) or (None, reason)."""
+    exported=[root/'pet/Lulu.exe',root/'pet/Lulu.app/Contents/MacOS/Lulu',root/'pet/Lulu.x86_64',root/'build/pet/windows/Lulu.exe',root/'build/pet/macos/Lulu.app/Contents/MacOS/Lulu',root/'build/pet/linux/Lulu.x86_64']
+    wanted={'nt':'.exe','darwin':'Lulu.app'}.get(os.name if os.name=='nt' else sys.platform,'.x86_64')
+    for candidate in exported:
+        if candidate.exists() and wanted in str(candidate): return [str(candidate)],'exported '+str(candidate)
+    if not (root/'desktop/project.godot').exists(): return None,'安装包缺少桌宠程序（pet/ 目录）。'
+    runtime=root/'runtime'
+    editors=[runtime/'godot.exe',runtime/'Godot.app/Contents/MacOS/Godot',runtime/'godot',Path(os.environ.get('LULU_GODOT_BIN','')),
+             Path.home()/'Downloads/Godot.app/Contents/MacOS/Godot',Path('/Applications/Godot.app/Contents/MacOS/Godot'),Path('/tmp/Godot_v4.4.1-stable_linux.x86_64')]
+    for name in ['godot4','godot','Godot']:
+        found=shutil.which(name)
+        if found: editors.append(Path(found))
+    for editor in editors:
+        if str(editor) and editor.exists(): return [str(editor),'--path',str(root/'desktop')],'editor '+str(editor)
+    return None,'没有桌宠程序：既没有 pet/ 里的导出版，也找不到 Godot 4.4。'
+
+
 def available_port(preferred):
     with socket.socket() as sock:
         try: sock.bind(('127.0.0.1',preferred))
@@ -47,7 +77,7 @@ def available_port(preferred):
 
 def main():
     parser=argparse.ArgumentParser()
-    parser.add_argument('--root',type=Path,default=Path(sys.executable).parent if getattr(sys,'frozen',False) else Path(__file__).resolve().parent)
+    parser.add_argument('--root',type=Path,default=package_root(Path(sys.executable).parent if getattr(sys,'frozen',False) else Path(__file__).resolve().parent))
     parser.add_argument('--data-dir',type=Path)
     parser.add_argument('--headless',action='store_true')
     args=parser.parse_args()
@@ -95,7 +125,7 @@ def main():
             else:
                 model_env=env.copy(); model_env.update(OLLAMA_HOST=f'127.0.0.1:{model_port}',OLLAMA_NUM_PARALLEL='1',OLLAMA_MAX_LOADED_MODELS='1',OLLAMA_NO_CLOUD='1')
                 if (root/'models').exists(): model_env['OLLAMA_MODELS']=str(root/'models')
-                model_process=subprocess.Popen([binary,'serve'],env=model_env,stdout=log,stderr=log)
+                model_process=subprocess.Popen([binary,'serve'],env=model_env,stdout=log,stderr=log,**_quiet)
                 for _ in range(40):
                     if healthy(model_port): break
                     if model_process.poll() is not None: report('local model service exited; continuing without it'); break
@@ -103,9 +133,9 @@ def main():
         elif backend!='ollama': report('backend '+backend+': local model service not started')
         env['LULU_OLLAMA_BASE']=f'http://127.0.0.1:{model_port}'
         port=available_port(8766)
-        command=([sys.executable,'--server'] if getattr(sys,'frozen',False) else [sys.executable,str(root/'entry.py'),'--server'])+['--no-browser','--port',str(port),'--data-dir',str(data)]
+        command=([sys.executable,'--server'] if getattr(sys,'frozen',False) else [sys.executable,str((agent_root if (agent_root/'entry.py').exists() else root)/'entry.py'),'--server'])+['--no-browser','--port',str(port),'--data-dir',str(data)]
         def start_server():
-            process=subprocess.Popen(command,env=env,stdout=log,stderr=log)
+            process=subprocess.Popen(command,env=env,stdout=log,stderr=log,**_quiet)
             for _ in range(80):
                 if process.poll() is not None: raise RuntimeError('Agent 启动失败，请查看日志。')
                 try:
@@ -118,10 +148,12 @@ def main():
         if args.headless:
             while server.poll() is None: time.sleep(1)
             return server.returncode
-        godot=runtime/('godot.exe' if os.name=='nt' else 'Godot.app/Contents/MacOS/Godot')
-        if not godot.exists(): godot=Path(os.environ.get('LULU_GODOT_BIN',str(Path.home()/'Downloads/Godot.app/Contents/MacOS/Godot')))
-        if not godot.exists(): raise RuntimeError('安装包缺少桌宠运行组件。')
-        pet=subprocess.Popen([str(godot),'--path',str(root/'desktop')],env=env,stdout=log,stderr=log)
+        pet_command,how=find_pet(root)
+        if not pet_command: raise RuntimeError(how)
+        frames=next((p for p in [root/'pet/frames.pck',root/'build/pet/frames.pck'] if p.exists()),None)
+        if frames: env['LULU_FRAMES']=str(frames)
+        report('pet: '+how+('; frames '+str(frames) if frames else '; frames from source tree'))
+        pet=subprocess.Popen(pet_command,env=env,stdout=log,stderr=log)
         restarts=0; health_failures=0; tick=0
         while pet.poll() is None:
             time.sleep(1)

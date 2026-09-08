@@ -12,6 +12,7 @@ var optimized: Dictionary = {}
 var members: Dictionary = {}
 var loaded_counts: Dictionary = {}
 var cached_bytes: int = 0
+var disabled: bool = false  # no frame files at all (exported build without frames.pck): stay quiet instead of erroring per frame
 const CACHE_BUDGET = 192 * 1024 * 1024
 func _init(data: Dictionary):
 	manifest=data
@@ -28,9 +29,12 @@ func _init(data: Dictionary):
 		var group=str(groups[i])
 		if not members.has(group):members[group]=[];loaded_counts[group]=0
 		members[group].append(i)
+	if not ResourceLoader.exists(paths[int(data.idle[0])]):
+		disabled=true;push_warning('animation frames unavailable: '+paths[int(data.idle[0])]);return
 	for i in range(int(data.idle[0]),int(data.idle[1])+1):_put(i,load(paths[i]))
 	ensure('base')
 func ensure(group: String):
+	if disabled:return
 	if group in recent: recent.erase(group)
 	recent.append(group)
 	for i in members.get(group,[]):
@@ -57,6 +61,7 @@ func trim():
 func ready(group: String) -> bool:
 	return members.has(group) and loaded_counts[group]==members[group].size()
 func pump():
+	if disabled:return
 	var started=Time.get_ticks_usec()
 	for i in pending.keys():
 		var status=ResourceLoader.load_threaded_get_status(paths[i])

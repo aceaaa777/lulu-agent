@@ -18,6 +18,7 @@ window/subwindows/embed_subwindows=false
 [rendering]
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
+textures/vram_compression/import_etc2_astc=true
 viewport/transparent_background=true
 environment/defaults/default_clear_color=Color(0,0,0,0)
 textures/default_filters/use_nearest_mipmap_filter=false
