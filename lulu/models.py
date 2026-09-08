@@ -353,10 +353,19 @@ class CommandProvider(ModelProvider):
         self.workdir = workdir
         self.profile.update(supports_tools=False, supports_schema=True, supports_think=False)
 
+    @staticmethod
+    def split(command):
+        """Split a command line into arguments. POSIX rules on Unix; on Windows backslashes are path separators, so
+        split in non-POSIX mode and strip the quotes that mode leaves on quoted arguments."""
+        if os.name != 'nt':
+            return shlex.split(command)
+        parts = shlex.split(command, posix=False)
+        return [p[1:-1] if len(p) >= 2 and p[0] == p[-1] and p[0] in '"\'' else p for p in parts]
+
     @property
     def executable(self):
         try:
-            return shlex.split(self.command)[0] if self.command else ''
+            return self.split(self.command)[0] if self.command.strip() else ''
         except ValueError:
             return ''
 
@@ -369,7 +378,7 @@ class CommandProvider(ModelProvider):
 
     def build_command(self, prompt, output_file):
         try:
-            parts = shlex.split(self.command)
+            parts = self.split(self.command)
         except ValueError:
             raise ValueError('命令格式无效')
         if self.model and '{model}' in self.command:

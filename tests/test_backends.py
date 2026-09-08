@@ -139,18 +139,26 @@ def test_command_provider_reports_missing_and_failing_commands(tmp_path):
 
 
 def test_claude_cli_provider_parses_result_json(tmp_path):
-    fake = tmp_path/'claude'
-    fake.write_text('#!/bin/sh\ncat >/dev/null\necho \'{"type":"result","is_error":false,"result":"{\\"answer\\":\\"来自命令行\\"}"}\'\n', encoding='utf-8')
-    fake.chmod(0o755)
-    provider = ClaudeCliProvider(str(fake), model='claude-sonnet-4-5')
+    # a stand-in for `claude -p` written in Python so the test runs on Windows too (no /bin/sh there)
+    fake = tmp_path/'fake_claude.py'
+    fake.write_text('import sys,json\nsys.stdin.read()\nprint(json.dumps({"type":"result","is_error":False,"result":json.dumps({"answer":"来自命令行"},ensure_ascii=False)},ensure_ascii=False))\n', encoding='utf-8')
+    provider = ClaudeCliProvider(f'"{sys.executable}" "{fake}"', model='claude-sonnet-4-5')
     assert provider.available() and '--model {model}' in provider.command and provider.build_command('p', '/tmp/o')[0][-1] == 'claude-sonnet-4-5'
+    assert provider.executable == sys.executable
     reply = asyncio.run(provider.chat([{'role': 'user', 'content': '问'}], schema={'title': 'answer', 'type': 'object'}))
     assert not reply.failed and json.loads(reply.content)['answer'] == '来自命令行'
-    error = tmp_path/'claude_err'
-    error.write_text('#!/bin/sh\ncat >/dev/null\necho \'{"type":"result","is_error":true,"result":"Not logged in"}\'\n', encoding='utf-8')
-    error.chmod(0o755)
-    reply = asyncio.run(ClaudeCliProvider(str(error)).chat([{'role': 'user', 'content': '问'}]))
+    error = tmp_path/'fake_claude_err.py'
+    error.write_text('import sys,json\nsys.stdin.read()\nprint(json.dumps({"type":"result","is_error":True,"result":"Not logged in"}))\n', encoding='utf-8')
+    reply = asyncio.run(ClaudeCliProvider(f'"{sys.executable}" "{error}"').chat([{'role': 'user', 'content': '问'}]))
     assert reply.failed and 'Not logged in' in reply.content
+
+
+def test_command_split_keeps_windows_paths(monkeypatch):
+    monkeypatch.setattr(os, 'name', 'nt')
+    parts = CommandProvider.split(r'"C:\Program Files\Python\python.exe" C:\tools\model.py --flag "a b"')
+    assert parts == [r'C:\Program Files\Python\python.exe', r'C:\tools\model.py', '--flag', 'a b']
+    monkeypatch.setattr(os, 'name', 'posix')
+    assert CommandProvider.split('"/usr/bin/python3" /tmp/model.py "a b"') == ['/usr/bin/python3', '/tmp/model.py', 'a b']
 
 
 # -------------------------------------------------------------------- probe

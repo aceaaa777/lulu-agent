@@ -42,7 +42,7 @@ class Files:
                 path = Path(base)/name
                 if path.is_symlink() or name.startswith('.'):
                     continue
-                rel = str(path.relative_to(self.root))
+                rel = path.relative_to(self.root).as_posix()
                 if query.lower() in rel.lower():
                     result.append({'path': rel, 'bytes': path.stat().st_size})
                 if len(result) >= 200:
@@ -101,7 +101,7 @@ class Files:
         folder.mkdir(exist_ok=True)
         bid = uuid.uuid4().hex
         shutil.copy2(path, folder / bid)
-        (folder / (bid+'.json')).write_text(json.dumps({'path': str(path.relative_to(self.root))}), encoding='utf-8')
+        (folder / (bid+'.json')).write_text(json.dumps({'path': path.relative_to(self.root).as_posix()}), encoding='utf-8')
         return bid
 
     def commit(self, path, writer):
@@ -116,7 +116,7 @@ class Files:
         finally:
             if os.path.exists(temp):
                 os.unlink(temp)
-        return {'path': str(path.relative_to(self.root)), 'bytes': path.stat().st_size,
+        return {'path': path.relative_to(self.root).as_posix(), 'bytes': path.stat().st_size,
                 'backup_id': backup}
 
     def write(self, name, content='', rows=None, overwrite=False):
