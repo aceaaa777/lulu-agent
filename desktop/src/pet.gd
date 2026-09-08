@@ -24,8 +24,10 @@ var status: Label
 var pet_chrome: Control
 var composer: PanelContainer
 var questions: Array=[]
-var question_window: Window
-var question_body: TextEdit
+var question_card: PanelContainer
+var ui_scale: float=1.15
+var ui_scale_option: OptionButton
+var question_body: Label
 var question_reply: TextEdit
 var question_send: Button
 var question_id=''
@@ -160,6 +162,8 @@ const OPTION_SETS := {
 	'scope':{'label':'去哪里找','key':'scope','values':['都查','本地文件','网上']},
 	'memory_target':{'label':'记到','key':'memory_target','values':['今天的笔记','长期记忆']},
 }
+const UI_SCALES := [1.0,1.15,1.3]
+const UI_SCALE_NAMES := ['标准','大','特大']
 const DEFAULT_HINT := '想做什么，直接告诉我。也可以先选上面的标签。'
 const BACKEND_KEYS := ['ollama','api','claude_cli','cli']
 const BACKEND_NAMES := ['本地模型（Ollama）','API 接口（使用自己的密钥）','Claude 命令行（claude -p）','其他命令行（如 codex exec）']
@@ -192,7 +196,7 @@ func _ready():
 	pet_chrome.theme=ui_theme()
 	pet_status=Label.new();pet_status.position=Vector2(116,324);pet_status.size=Vector2(296,24);pet_status.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
 	pet_status.add_theme_font_size_override('font_size',15);pet_status.add_theme_color_override('font_color',Color('#5a4b3b'));pet_chrome.add_child(pet_status)
-	var row=HBoxContainer.new();row.position=Vector2(126,356);row.add_theme_constant_override('separation',6);pet_chrome.add_child(row)
+	var row=HBoxContainer.new();row.position=Vector2(84,356);row.size=Vector2(360,30);row.alignment=BoxContainer.ALIGNMENT_CENTER;row.add_theme_constant_override('separation',6);pet_chrome.add_child(row)
 	button(row,'聊聊天',show_panel)
 	read_button=button(row,'陪伴',toggle_reading)
 	make_panel();make_alert();make_agent_dialogs();panel.show();alert.hide()
@@ -219,6 +223,22 @@ func load_frame_pack() -> bool:
 			print('frames: ',path);return FileAccess.file_exists('res://assets/optimized.json')
 	push_warning('frames.pck not found; looked in '+str(candidates))
 	return false
+func load_ui_scale() -> float:
+	# 界面大小 lives in user://ui.json; default is one notch up from 1:1 because 15px text reads small on a laptop screen.
+	if FileAccess.file_exists('user://ui.json'):
+		var data=JSON.parse_string(FileAccess.get_file_as_string('user://ui.json'))
+		if data is Dictionary and data.has('scale') and float(data.scale) in UI_SCALES: return float(data.scale)
+	return 1.15
+func set_ui_scale(scale: float):
+	# the window grows with the content so the chat page keeps the same room at every size
+	ui_scale=scale; panel.content_scale_factor=scale
+	panel.min_size=Vector2i(Vector2(860,620)*scale)
+	panel.size=Vector2i(Vector2(1040,740)*scale)
+	var area=DisplayServer.screen_get_usable_rect()
+	panel.size=Vector2i(mini(panel.size.x,area.size.x-40),mini(panel.size.y,area.size.y-60))
+	panel.position=Vector2i(maxi(area.position.x,mini(panel.position.x,area.end.x-panel.size.x)),maxi(area.position.y,mini(panel.position.y,area.end.y-panel.size.y)))
+	var f=FileAccess.open('user://ui.json',FileAccess.WRITE)
+	if f: f.store_string(JSON.stringify({'scale':scale})); f.close()
 func window_background(window: Window):
 	var bg=ColorRect.new();bg.color=Color('#faf7f1');bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT);window.add_child(bg)
 func ui_theme() -> Theme:
@@ -254,6 +274,7 @@ func plain_label(parent: Node, text: String) -> Label:
 func make_panel():
 	panel=Window.new(); panel.title='Lulu · 你的工作伙伴'; panel.size=Vector2i(1040,740); panel.min_size=Vector2i(860,620)
 	panel.transparent=false; panel.borderless=false; panel.always_on_top=false; panel.close_requested.connect(func(): panel.hide()); add_child(panel)
+	panel.content_scale_mode=Window.CONTENT_SCALE_MODE_CANVAS_ITEMS; panel.content_scale_aspect=Window.CONTENT_SCALE_ASPECT_IGNORE; ui_scale=load_ui_scale(); panel.content_scale_factor=ui_scale; panel.size=Vector2i(Vector2(1040,740)*ui_scale); panel.min_size=Vector2i(Vector2(860,620)*ui_scale)
 	panel.position=DisplayServer.screen_get_usable_rect().position+Vector2i(60,70)
 	var background=ColorRect.new(); background.color=Color('#faf7f1'); background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); panel.add_child(background)
 	var root=HBoxContainer.new(); root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); root.add_theme_constant_override('separation',0); panel.add_child(root)
@@ -339,7 +360,15 @@ func make_panel():
 	# -- 设置（模型 + 陪伴）
 	var settings_scroll=ScrollContainer.new(); settings_scroll.name='设置'; settings_scroll.horizontal_scroll_mode=ScrollContainer.SCROLL_MODE_DISABLED; tabs.add_child(settings_scroll)
 	var settings=VBoxContainer.new(); settings.size_flags_horizontal=Control.SIZE_EXPAND_FILL; settings.add_theme_constant_override('separation',12); settings_scroll.add_child(settings)
-	page_title(settings,'设置','模型、联网搜索和陪伴。')
+	page_title(settings,'设置','界面、模型、联网搜索和陪伴。')
+	var look=HBoxContainer.new(); look.add_theme_constant_override('separation',8); settings.add_child(look)
+	var look_label=Label.new(); look_label.text='界面大小'; look.add_child(look_label)
+	ui_scale_option=OptionButton.new(); look.add_child(ui_scale_option)
+	for name in UI_SCALE_NAMES: ui_scale_option.add_item(name)
+	ui_scale_option.select(UI_SCALES.find(ui_scale) if ui_scale in UI_SCALES else 1)
+	ui_scale_option.item_selected.connect(func(i): set_ui_scale(UI_SCALES[i]))
+	var look_hint=label(look,'字太小就调大一档，窗口里的字和按钮一起放大。'); look_hint.add_theme_font_size_override('font_size',14); look_hint.add_theme_color_override('font_color',Color('#7d6e5d'))
+	settings.add_child(spacer(6))
 	make_backend_tab(settings)
 	settings.add_child(spacer(10))
 	var care=Label.new(); care.text='陪伴'; care.add_theme_font_size_override('font_size',18); settings.add_child(care)
@@ -467,7 +496,7 @@ func poll():
 	if not connected:
 		notify_text(str(response.error)); animation.set_agent_status('blocked') if task_active else animation.set_agent_status('cancelled'); polling=false; return
 	tasks=response.tasks; reminders=response.reminders;questions=response.get('questions',[]);last_artifact=str(response.get('last_artifact',''))
-	if not questions.is_empty() and not question_window.visible and question_seen!=str(questions[0].id):open_pending_question()
+	if not questions.is_empty() and not question_card.visible and question_seen!=str(questions[0].id):open_pending_question()
 	var active=false; var selected_status=''
 	var selection=task_list.get_selected_items()
 	var selected_task=str(task_list.get_item_metadata(selection[0])) if not selection.is_empty() else ''
@@ -792,14 +821,15 @@ func make_agent_dialogs():
 	label(col,'做了哪些步骤、哪里没成功，都能在这里看。')
 	record_body=TextEdit.new();record_body.editable=false;record_body.wrap_mode=TextEdit.LINE_WRAPPING_BOUNDARY;record_body.size_flags_vertical=Control.SIZE_EXPAND_FILL;col.add_child(record_body)
 	button(col,'刷新记录',refresh_record);record_window.hide()
-	question_window=Window.new();question_window.title='Lulu · 补充一下';question_window.size=Vector2i(620,470);question_window.min_size=Vector2i(520,420);question_window.close_requested.connect(func():question_window.hide());add_child(question_window);window_background(question_window)
-	root=MarginContainer.new();root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT);question_window.add_child(root)
-	for edge in ['margin_left','margin_right','margin_top','margin_bottom']:root.add_theme_constant_override(edge,18)
-	col=column(root,'补充');col.theme=ui_theme();label(col,'还差一点信息，告诉我就能继续。')
-	question_body=TextEdit.new();question_body.editable=false;question_body.wrap_mode=TextEdit.LINE_WRAPPING_BOUNDARY;question_body.size_flags_vertical=Control.SIZE_EXPAND_FILL;col.add_child(question_body)
+	# 补充一下: a card inside the work window, right above the composer (one window, not a second one popping up)
+	question_card=PanelContainer.new();var card_box=StyleBoxFlat.new();card_box.bg_color=Color('#fbf3e2');card_box.border_color=Color('#d9b978');card_box.set_border_width_all(1);card_box.set_corner_radius_all(16)
+	card_box.content_margin_left=14;card_box.content_margin_right=14;card_box.content_margin_top=10;card_box.content_margin_bottom=10;question_card.add_theme_stylebox_override('panel',card_box)
+	composer.get_parent().add_child(question_card);composer.get_parent().move_child(question_card,composer.get_index())
+	col=column(question_card,'补充');col.add_theme_constant_override('separation',8)
+	question_body=Label.new();question_body.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART;question_body.add_theme_font_size_override('font_size',16);col.add_child(question_body)
 	question_options=HBoxContainer.new();question_options.add_theme_constant_override('separation',6);col.add_child(question_options)
-	question_reply=TextEdit.new();question_reply.custom_minimum_size=Vector2(0,110);question_reply.wrap_mode=TextEdit.LINE_WRAPPING_BOUNDARY;question_reply.placeholder_text='选上面的选项，或直接回答。要用文件的话，先在主窗口添加，再告诉我文件名。';col.add_child(question_reply)
-	var row=HBoxContainer.new();col.add_child(row);question_send=button(row,'回复并继续',answer_pending_question);button(row,'稍后再说',func():question_window.hide());button(row,'取消任务',cancel_pending_question);question_window.hide()
+	question_reply=TextEdit.new();question_reply.custom_minimum_size=Vector2(0,64);question_reply.wrap_mode=TextEdit.LINE_WRAPPING_BOUNDARY;question_reply.placeholder_text='选上面的选项，或直接回答。要用文件的话，先在文件页添加，再告诉我文件名。';col.add_child(question_reply)
+	var row=HBoxContainer.new();row.add_theme_constant_override('separation',8);col.add_child(row);question_send=button(row,'回复并继续',answer_pending_question);button(row,'稍后再说',func():question_card.hide());button(row,'取消任务',cancel_pending_question);question_card.hide()
 
 func open_pending_question(for_task: String=''):
 	for q in questions:
@@ -812,7 +842,7 @@ func open_pending_question(for_task: String=''):
 			for option in options:
 				var text=str(option)
 				button(question_options,text,func(): question_reply.text=text; answer_pending_question())
-		question_window.popup_centered();question_window.grab_focus();question_reply.grab_focus();return
+		question_card.show();panel.show();go_chat();question_reply.grab_focus();return
 	notify_text('暂时没有需要你回答的问题。')
 
 func answer_pending_question():
@@ -821,13 +851,13 @@ func answer_pending_question():
 	var r=await bridge.request_api(HTTPClient.METHOD_POST,'questions/'+question_id+'/answer',{'answer':question_reply.text.strip_edges()})
 	question_send.disabled=false
 	if r.has('error'):question_body.text=str(r.error);return
-	session_id=str(r.session);task_id=str(r.task);previous_status='queued';task_active=true;animation.recovered=true;animation.set_agent_status('thinking');started_ms=Time.get_ticks_msec();question_window.hide();await load_messages();poll_time=1
+	session_id=str(r.session);task_id=str(r.task);previous_status='queued';task_active=true;animation.recovered=true;animation.set_agent_status('thinking');started_ms=Time.get_ticks_msec();question_card.hide();await load_messages();poll_time=1
 
 func cancel_pending_question():
 	if question_id.is_empty():return
 	var r=await bridge.request_api(HTTPClient.METHOD_POST,'questions/'+question_id+'/answer',{'action':'cancel'})
 	if r.has('error'):question_body.text=str(r.error);return
-	question_window.hide();animation.set_agent_status('cancelled');poll_time=1
+	question_card.hide();animation.set_agent_status('cancelled');poll_time=1
 
 func show_record(target: String=''):
 	record_task=target if not target.is_empty() else task_id

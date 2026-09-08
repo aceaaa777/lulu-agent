@@ -66,14 +66,21 @@ func run():
 			await shot('page-设置-轮询后')
 			pet.backend_option.select(0); pet.backend_option.item_selected.emit(0)
 	pet.go_chat()
-	# the question window and the record window
+	# the 补充一下 card sits inside the work window above the composer
 	pet.question_body.text = '还差一点信息\n\n要把 报告.md 转成什么格式？'
 	for o in ['PDF', 'Word', 'Markdown']:
 		var b = Button.new(); b.text = o; pet.question_options.add_child(b)
-	pet.question_window.popup_centered()
-	await create_timer(0.5).timeout
+	pet.question_card.show()
+	await shot('question-card')
+	pet.question_card.hide()
+	# 界面大小: the same page at 标准 / 大 / 特大
+	for i in range(pet.UI_SCALES.size()):
+		pet.set_ui_scale(pet.UI_SCALES[i])
+		await shot('scale-' + pet.UI_SCALE_NAMES[i])
+	pet.set_ui_scale(1.15)
+	# the pet itself (buttons centred under the frame)
+	await create_timer(0.3).timeout
 	await RenderingServer.frame_post_draw
-	pet.question_window.get_texture().get_image().save_png(shots.path_join('90-question.png'))
-	pet.question_window.hide()
+	pet.get_viewport().get_texture().get_image().save_png(shots.path_join('95-pet.png'))
 	print('TOUR_DONE ', n)
 	quit()
