@@ -425,6 +425,10 @@ class CommandProvider(ModelProvider):
             parts, stdin = self.build_command(prompt, output_file)
             env = dict(os.environ)
             env.pop('CLAUDECODE', None)
+            # we pipe UTF-8 both ways; on Windows a child's pipes default to the locale code page, which breaks on
+            # Chinese, so tell Python-based tools to use UTF-8 (other tools ignore these)
+            env['PYTHONIOENCODING'] = 'utf-8'
+            env['PYTHONUTF8'] = '1'
             process = await asyncio.create_subprocess_exec(*parts, stdin=asyncio.subprocess.PIPE if stdin is not None else asyncio.subprocess.DEVNULL,
                                                            stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
                                                            cwd=self.workdir or folder, env=env)

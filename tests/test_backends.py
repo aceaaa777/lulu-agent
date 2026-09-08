@@ -114,11 +114,14 @@ def test_thinking_text_never_reaches_content():
 # ------------------------------------------------------------- CLI backend
 def test_command_provider_runs_a_real_command_and_parses_json(tmp_path):
     script = tmp_path/'echo_model.py'
-    script.write_text('import sys,json\nprompt=sys.stdin.read()\nprint("前言 "+json.dumps({"answer":"收到 "+str(len(prompt))+" 字"},ensure_ascii=False))\n', encoding='utf-8')
+    # the child reports its pipe encodings so a Windows locale code page (cp1252/gbk) would be caught here
+    script.write_text('import sys,json\nprompt=sys.stdin.read()\nprint("前言 "+json.dumps({"answer":"收到 "+str(len(prompt))+" 字","echo":("世界" in prompt),"enc":sys.stdin.encoding+"/"+sys.stdout.encoding},ensure_ascii=False))\n', encoding='utf-8')
     provider = CommandProvider(f'{sys.executable} {script}', model='echo', prompt_via='stdin', output='stdout')
     assert provider.available()
-    reply = asyncio.run(provider.chat([{'role': 'user', 'content': '你好'}], schema={'title': 'answer', 'type': 'object'}))
-    assert not reply.failed and json.loads(reply.content)['answer'].startswith('收到')
+    reply = asyncio.run(provider.chat([{'role': 'user', 'content': '你好，世界'}], schema={'title': 'answer', 'type': 'object'}))
+    assert not reply.failed, reply.content
+    data = json.loads(reply.content)
+    assert data['answer'].startswith('收到') and data["echo"] is True and data['enc'].lower().replace('-', '') == 'utf8/utf8'
     plain = asyncio.run(provider.chat([{'role': 'user', 'content': '你好'}]))
     assert plain.content.startswith('前言')
     file_script = tmp_path/'file_model.py'
