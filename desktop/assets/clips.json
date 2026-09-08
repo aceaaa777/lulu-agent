@@ -1,0 +1,706 @@
+{
+  "count": 3315,
+  "enter": [
+    0,
+    103
+  ],
+  "exit": [
+    179,
+    221
+  ],
+  "fps": 24,
+  "idle": [
+    990,
+    995
+  ],
+  "loop_match_frames": [
+    104,
+    150
+  ],
+  "loop_seam_mean_byte_error": 0.586875,
+  "work": [
+    104,
+    149
+  ],
+  "wave": [
+    249,
+    301
+  ],
+  "sulk_enter": [
+    302,
+    324
+  ],
+  "sulk_hold": [
+    325,
+    336
+  ],
+  "sulk_exit": [
+    337,
+    361
+  ],
+  "wave_interval_seconds": 60,
+  "sulk_delay_seconds": 10,
+  "banks": [
+    {
+      "code": "7736",
+      "start": 362,
+      "count": 169
+    },
+    {
+      "code": "9514",
+      "start": 531,
+      "count": 169
+    },
+    {
+      "code": "2806",
+      "start": 700,
+      "count": 169
+    },
+    {
+      "code": "2700",
+      "start": 869,
+      "count": 121
+    },
+    {
+      "code": "2822",
+      "start": 990,
+      "count": 169
+    },
+    {
+      "code": "7305",
+      "start": 1159,
+      "count": 169
+    },
+    {
+      "code": "7477",
+      "start": 1328,
+      "count": 240
+    },
+    {
+      "code": "7716",
+      "start": 1568,
+      "count": 169
+    },
+    {
+      "code": "9641",
+      "start": 1737,
+      "count": 169
+    },
+    {
+      "code": "8290",
+      "start": 1906,
+      "count": 361
+    },
+    {
+      "code": "3013",
+      "start": 2267,
+      "count": 193
+    },
+    {
+      "code": "3051",
+      "start": 2460,
+      "count": 121
+    },
+    {
+      "code": "4321",
+      "start": 2581,
+      "count": 106
+    },
+    {
+      "code": "6157",
+      "start": 2687,
+      "count": 97
+    },
+    {
+      "code": "6507",
+      "start": 2784,
+      "count": 121
+    },
+    {
+      "code": "6968",
+      "start": 2905,
+      "count": 313
+    },
+    {
+      "code": "8166",
+      "start": 3218,
+      "count": 97
+    }
+  ],
+  "look_a": [
+    1011,
+    1158
+  ],
+  "look_b": [
+    1180,
+    1327
+  ],
+  "read_enter": [
+    362,
+    423
+  ],
+  "read_loop": [
+    424,
+    482
+  ],
+  "read_exit": [
+    483,
+    530
+  ],
+  "sleep_enter": [
+    1906,
+    2007
+  ],
+  "sleep_loop": [
+    2008,
+    2125
+  ],
+  "sleep_exit": [
+    2126,
+    2266
+  ],
+  "sunny_enter": [
+    1568,
+    1607
+  ],
+  "sunny_loop": [
+    1608,
+    1617
+  ],
+  "sunny_exit": [
+    1618,
+    1736
+  ],
+  "rainy_enter": [
+    1737,
+    1776
+  ],
+  "rainy_loop": [
+    1777,
+    1786
+  ],
+  "rainy_exit": [
+    1787,
+    1905
+  ],
+  "cloudy_enter": [
+    700,
+    749
+  ],
+  "cloudy_loop": [
+    750,
+    765
+  ],
+  "cloudy_exit": [
+    766,
+    868
+  ],
+  "ok": [
+    869,
+    989
+  ],
+  "goodbye": [
+    249,
+    301
+  ],
+  "read_alt": [
+    531,
+    699
+  ],
+  "framing": {},
+  "sunny": [
+    1568,
+    1736
+  ],
+  "rainy": [
+    1737,
+    1905
+  ],
+  "cloudy": [
+    700,
+    868
+  ],
+  "normalization_version": 8,
+  "geometry_policy": "Native replacement frames remain 1280x720: no per-action resize, warping, crop or leg compositing. One shared aspect-preserving display transform.",
+  "matte_policy": "per-pixel neutral matte and color decontamination; sign/rain/bubble protected",
+  "blink": [
+    996,
+    1010
+  ],
+  "sleep_alt_enter": [
+    1328,
+    1397
+  ],
+  "sleep_alt_loop": [
+    1398,
+    1463
+  ],
+  "sleep_alt_exit": [
+    1464,
+    1567
+  ],
+  "native_banks": [
+    "2700",
+    "2822",
+    "7305",
+    "7477",
+    "7716",
+    "9641",
+    "8290",
+    "3013",
+    "3051",
+    "4321",
+    "6157",
+    "6507",
+    "6968",
+    "8166"
+  ],
+  "blink_interval_seconds": 10,
+  "legacy_display_scale": 0.92,
+  "legacy_display_pivot": [
+    264,
+    280
+  ],
+  "night": [
+    2267,
+    2459
+  ],
+  "complete": [
+    2460,
+    2580
+  ],
+  "pinch_enter": [
+    2581,
+    2650
+  ],
+  "pinch_hold": [
+    2651,
+    2651
+  ],
+  "candy_enter": [
+    2687,
+    2721
+  ],
+  "candy_hold": [
+    2722,
+    2722
+  ],
+  "candy_exit": [
+    2723,
+    2783
+  ],
+  "complete_alt": [
+    2784,
+    2904
+  ],
+  "thinking_enter": [
+    2905,
+    2942
+  ],
+  "thinking_loop": [
+    2943,
+    2970
+  ],
+  "thinking_done": [
+    2971,
+    3043
+  ],
+  "blocked_enter": [
+    3044,
+    3086
+  ],
+  "blocked_loop": [
+    3087,
+    3126
+  ],
+  "resolved": [
+    3127,
+    3217
+  ],
+  "candy_close_enter": [
+    3218,
+    3261
+  ],
+  "candy_close_hold": [
+    3262,
+    3262
+  ],
+  "candy_close_exit": [
+    3263,
+    3314
+  ],
+  "feedback_sources": {
+    "3013": {
+      "night": [
+        0,
+        192
+      ]
+    },
+    "3051": {
+      "complete": [
+        0,
+        120
+      ]
+    },
+    "4321": {
+      "pinch_enter": [
+        0,
+        104
+      ],
+      "pinch_hold": [
+        105,
+        105
+      ]
+    },
+    "6157": {
+      "candy_enter": [
+        0,
+        34
+      ],
+      "candy_hold": [
+        35,
+        35
+      ],
+      "candy_exit": [
+        36,
+        96
+      ]
+    },
+    "6507": {
+      "complete_alt": [
+        0,
+        120
+      ]
+    },
+    "6968": {
+      "thinking_enter": [
+        0,
+        37
+      ],
+      "thinking_loop": [
+        38,
+        65
+      ],
+      "thinking_done": [
+        66,
+        138
+      ],
+      "blocked_enter": [
+        139,
+        181
+      ],
+      "blocked_loop": [
+        182,
+        221
+      ],
+      "resolved": [
+        222,
+        312
+      ]
+    },
+    "8166": {
+      "candy_close_enter": [
+        0,
+        43
+      ],
+      "candy_close_hold": [
+        44,
+        44
+      ],
+      "candy_close_exit": [
+        45,
+        96
+      ]
+    }
+  },
+  "care_policy": {
+    "work_minutes": 45,
+    "break_minutes": 5,
+    "night_start_hour": 22,
+    "night_end_hour": 6,
+    "night_active_minutes": 10,
+    "default_candy": "candy",
+    "closeup_candy": "test_only"
+  },
+  "pinch_exit": [
+    2652,
+    2686
+  ],
+  "display_calibration": {
+    "base": {
+      "reference_frame": 0,
+      "source_bounds": [
+        186,
+        49,
+        337,
+        279
+      ],
+      "scale": 1.0043478260869565,
+      "rect": [
+        117.67087,
+        20.28435,
+        295.68,
+        295.68
+      ]
+    },
+    "7736": {
+      "reference_frame": 362,
+      "source_bounds": [
+        191,
+        45,
+        338,
+        280
+      ],
+      "scale": 0.9829787234042553,
+      "rect": [
+        117.81404,
+        24.78468,
+        289.38894,
+        289.38894
+      ]
+    },
+    "9514": {
+      "reference_frame": 531,
+      "source_bounds": [
+        187,
+        51,
+        341,
+        280
+      ],
+      "scale": 1.0087336244541485,
+      "rect": [
+        114.51441,
+        18.15022,
+        296.97118,
+        296.97118
+      ]
+    },
+    "2806": {
+      "reference_frame": 868,
+      "source_bounds": [
+        188,
+        49,
+        341,
+        280
+      ],
+      "scale": 1.0,
+      "rect": [
+        115.3,
+        20.4,
+        294.4,
+        294.4
+      ]
+    },
+    "2700": {
+      "reference_frame": 989,
+      "source_bounds": [
+        186,
+        47,
+        341,
+        279
+      ],
+      "scale": 0.9956896551724138,
+      "rect": [
+        0.63578,
+        20.11638,
+        525.72414,
+        295.71983
+      ]
+    },
+    "2822": {
+      "reference_frame": 990,
+      "source_bounds": [
+        185,
+        47,
+        341,
+        278
+      ],
+      "scale": 1.0,
+      "rect": [
+        0.0,
+        20.0,
+        528.0,
+        297.0
+      ]
+    },
+    "7305": {
+      "reference_frame": 1327,
+      "source_bounds": [
+        184,
+        47,
+        343,
+        278
+      ],
+      "scale": 1.0,
+      "rect": [
+        -0.5,
+        20.0,
+        528.0,
+        297.0
+      ]
+    },
+    "7477": {
+      "reference_frame": 1328,
+      "source_bounds": [
+        186,
+        47,
+        341,
+        278
+      ],
+      "scale": 1.0,
+      "rect": [
+        -0.5,
+        20.0,
+        528.0,
+        297.0
+      ]
+    },
+    "7716": {
+      "reference_frame": 1736,
+      "source_bounds": [
+        186,
+        48,
+        341,
+        278
+      ],
+      "scale": 1.0043478260869565,
+      "rect": [
+        -1.64565,
+        18.87826,
+        530.29565,
+        298.2913
+      ]
+    },
+    "9641": {
+      "reference_frame": 1905,
+      "source_bounds": [
+        191,
+        47,
+        336,
+        277
+      ],
+      "scale": 1.0043478260869565,
+      "rect": [
+        -1.64565,
+        19.88261,
+        530.29565,
+        298.2913
+      ]
+    },
+    "8290": {
+      "reference_frame": 1906,
+      "source_bounds": [
+        185,
+        47,
+        341,
+        277
+      ],
+      "scale": 1.0043478260869565,
+      "rect": [
+        -1.14348,
+        19.88261,
+        530.29565,
+        298.2913
+      ]
+    },
+    "3013": {
+      "reference_frame": 2267,
+      "source_bounds": [
+        186,
+        47,
+        341,
+        278
+      ],
+      "scale": 1.0,
+      "rect": [
+        -0.5,
+        20.0,
+        528.0,
+        297.0
+      ]
+    },
+    "3051": {
+      "reference_frame": 2460,
+      "source_bounds": [
+        186,
+        46,
+        342,
+        278
+      ],
+      "scale": 0.9956896551724138,
+      "rect": [
+        0.13793,
+        21.11207,
+        525.72414,
+        295.71983
+      ]
+    },
+    "4321": {
+      "reference_frame": 2581,
+      "source_bounds": [
+        182,
+        43,
+        347,
+        288
+      ],
+      "scale": 0.9428571428571428,
+      "rect": [
+        13.61429,
+        25.31429,
+        497.82857,
+        280.02857
+      ]
+    },
+    "6157": {
+      "reference_frame": 2687,
+      "source_bounds": [
+        189,
+        45,
+        338,
+        280
+      ],
+      "scale": 0.9829787234042553,
+      "rect": [
+        3.98511,
+        22.42553,
+        519.01277,
+        291.94468
+      ]
+    },
+    "6507": {
+      "reference_frame": 2784,
+      "source_bounds": [
+        189,
+        46,
+        337,
+        279
+      ],
+      "scale": 0.9914163090128756,
+      "rect": [
+        2.25751,
+        21.22318,
+        523.46781,
+        294.45064
+      ]
+    },
+    "6968": {
+      "reference_frame": 2905,
+      "source_bounds": [
+        187,
+        50,
+        341,
+        281
+      ],
+      "scale": 1.0,
+      "rect": [
+        -1.0,
+        17.0,
+        528.0,
+        297.0
+      ]
+    }
+  },
+  "intentional_closeup_banks": [
+    "8166"
+  ]
+}

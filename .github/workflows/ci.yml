@@ -1,0 +1,49 @@
+name: ci
+on:
+  push:
+  pull_request:
+jobs:
+  tests:
+    name: 回归（${{ matrix.os }}）
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r requirements.txt -c constraints.txt
+      - run: python -m pytest tests -q
+      - name: 后端冒烟（演示模型）
+        shell: bash
+        env:
+          LULU_FAKE_MODEL: '1'
+          LULU_NO_LOCATE: '1'
+        run: |
+          python entry.py --server --no-browser --port 8797 --data-dir ./ci-home > ci-server.log 2>&1 &
+          for i in $(seq 1 40); do [ -f ci-home/data/connection.json ] && break; sleep 0.5; done
+          python - <<'PY'
+          import json,urllib.request
+          c=json.load(open('ci-home/data/connection.json'))
+          req=urllib.request.Request(f"http://127.0.0.1:{c['port']}/api/health",headers={'X-Lulu-Token':c['token']})
+          print(json.load(urllib.request.urlopen(req,timeout=5)))
+          PY
+  godot:
+    name: 桌宠脚本检查（Godot 4.4）
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: 下载 Godot
+        run: |
+          curl -sSL -o godot.zip https://github.com/godotengine/godot/releases/download/4.4.1-stable/Godot_v4.4.1-stable_linux.x86_64.zip
+          unzip -q godot.zip && chmod +x Godot_v4.4.1-stable_linux.x86_64
+      - name: 语法与语义检查
+        run: |
+          set -e
+          for f in pet animation_state animation_lab bridge_client frame_store; do
+            ./Godot_v4.4.1-stable_linux.x86_64 --headless --path desktop --check-only -s res://src/$f.gd 2>&1 | tee /tmp/check.log
+            ! grep -q "SCRIPT ERROR" /tmp/check.log
+          done

@@ -1,0 +1,173 @@
+{
+  "1191": {
+    "reference_frames": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "reference_bbox": [
+      85.0,
+      42.0,
+      214.0,
+      298.0
+    ],
+    "uniform_fit": 0.9834769687964339,
+    "missing_leg_extensions": 169,
+    "complete_frames_never_patched": 0
+  },
+  "9332": {
+    "reference_frames": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "reference_bbox": [
+      101.0,
+      47.0,
+      186.0,
+      284.0
+    ],
+    "uniform_fit": 1.0626973935376394,
+    "missing_leg_extensions": 169,
+    "complete_frames_never_patched": 0
+  },
+  "7115": {
+    "reference_frames": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "reference_bbox": [
+      98.0,
+      44.0,
+      189.0,
+      288.0
+    ],
+    "uniform_fit": 1.0473265073947668,
+    "missing_leg_extensions": 86,
+    "complete_frames_never_patched": 148
+  },
+  "8711": {
+    "reference_frames": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "reference_bbox": [
+      99.0,
+      45.0,
+      190.0,
+      287.0
+    ],
+    "uniform_fit": 1.0482826731043564,
+    "missing_leg_extensions": 121,
+    "complete_frames_never_patched": 0
+  },
+  "7736": {
+    "reference_frames": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "reference_bbox": [
+      107.0,
+      51.0,
+      169.0,
+      261.0
+    ],
+    "uniform_fit": 1.1601125338739373,
+    "missing_leg_extensions": 0,
+    "complete_frames_never_patched": 169
+  },
+  "9514": {
+    "reference_frames": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "reference_bbox": [
+      103.0,
+      51.0,
+      178.0,
+      255.0
+    ],
+    "uniform_fit": 1.160440083136006,
+    "missing_leg_extensions": 0,
+    "complete_frames_never_patched": 169
+  },
+  "6444": {
+    "reference_frames": [
+      60,
+      61,
+      62,
+      63,
+      64
+    ],
+    "reference_bbox": [
+      99.0,
+      50.0,
+      187.0,
+      281.0
+    ],
+    "uniform_fit": 1.0690072851751076,
+    "missing_leg_extensions": 135,
+    "complete_frames_never_patched": 16
+  },
+  "3583": {
+    "reference_frames": [
+      60,
+      61,
+      62,
+      63,
+      64
+    ],
+    "reference_bbox": [
+      105.0,
+      64.0,
+      175.0,
+      265.0
+    ],
+    "uniform_fit": 1.1361427863163114,
+    "missing_leg_extensions": 169,
+    "complete_frames_never_patched": 0
+  },
+  "2806": {
+    "reference_frames": [
+      60,
+      61,
+      62,
+      63,
+      64
+    ],
+    "reference_bbox": [
+      104.0,
+      52.0,
+      177.0,
+      258.0
+    ],
+    "uniform_fit": 1.1534123992522447,
+    "missing_leg_extensions": 0,
+    "complete_frames_never_patched": 169
+  },
+  "reference": {
+    "bbox": [
+      91.0,
+      40.0,
+      205.0,
+      297.0
+    ],
+    "method": "one scalar on both axes; translations only; no optical flow or vertical leg compression"
+  }
+}

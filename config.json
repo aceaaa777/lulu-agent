@@ -1,0 +1,31 @@
+{
+  "backend": "ollama",
+  "think": false,
+  "tier": "8b",
+  "ollama": {
+    "base": "http://127.0.0.1:11434",
+    "instruct": "",
+    "thinking": "",
+    "hybrid": null
+  },
+  "api": {
+    "preset": "dashscope",
+    "base": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    "model": "qwen-plus",
+    "think_param": "enable_thinking",
+    "thinking_model": ""
+  },
+  "claude_cli": {
+    "command": "claude",
+    "model": ""
+  },
+  "cli": {
+    "command": "codex exec --skip-git-repo-check --output-last-message {output_file}",
+    "model": "",
+    "prompt_via": "arg",
+    "output": "file"
+  },
+  "search": {
+    "provider": "auto"
+  }
+}
