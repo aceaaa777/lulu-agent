@@ -1,0 +1,11 @@
+{
+  "frames": 241,
+  "height": 384,
+  "source": "dreamina-2026-09-06 (four-view character reference video, 10 s, 24 fps)",
+  "solid_source_pixels": 21379643,
+  "method": "edge-connected neutral-background matte; original RGB, fixed crop",
+  "width": 384,
+  "fps": 24,
+  "duration": 10.078548752834466,
+  "transparent_source_pixels": 103203748
+}

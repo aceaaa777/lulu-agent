@@ -1,0 +1,25 @@
+# 运行时数据与私人内容
+.venv/
+data/
+workspace/
+__pycache__/
+.pytest_cache/
+*.log
+live-test-report.json
+live-acceptance-report.json
+live-acceptance.log
+network-test-report.json
+search-debug/
+secrets.json
+# 构建产物
+build/
+dist/
+artifacts/
+# 桌宠动画帧（400MB，随 Release 的“动画资源包”分发，不进仓库）
+desktop/assets/optimized/
+desktop/assets/optimized.json
+desktop/.godot/
+desktop/.local/
+# 本机验收记录（含本机路径）
+validation/
+.DS_Store
