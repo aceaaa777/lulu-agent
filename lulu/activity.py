@@ -1,6 +1,6 @@
 """Local idle duration only; never capture keys, text, screenshots or app content."""
 import ctypes,sys,time
-from datetime import datetime,timedelta
+from datetime import datetime
 
 def system_idle_seconds():
     try:
@@ -20,25 +20,36 @@ def system_idle_seconds():
     return None
 
 class CareMonitor:
+    """Two care events, both decided here and only played by the pet.
+    candy: every CANDY_SECONDS (four hours) after Lulu started, whatever the user was doing; the offer waits until the
+    pet is free to show it, so a user who was away sees it on return.
+    night: between NIGHT_START and NIGHT_END on the *local* clock passed in (the weather city's time when one is set),
+    once every NIGHT_REPEAT seconds while the user is present (input within PRESENT_SECONDS).
+    `work` only reports active seconds for diagnostics; a BREAK_SECONDS pause resets it."""
+    CANDY_SECONDS=14400;BREAK_SECONDS=300;PRESENT_SECONDS=60
+    NIGHT_START=18;NIGHT_END=6;NIGHT_REPEAT=3600
     def __init__(self):
-        self.last=None;self.work=0.;self.night_work=0.;self.night_key='';self.night_sent=False
+        self.last=None;self.started=None;self.work=0.;self.night_last=None;self.candies=0
         self.pending=None;self.serial=0
+    @classmethod
+    def is_night(cls,local):
+        return local.hour>=cls.NIGHT_START or local.hour<cls.NIGHT_END
     def update(self,idle,stamp=None,local=None):
         stamp=time.monotonic() if stamp is None else stamp
         local=datetime.now() if local is None else local
+        if self.started is None:self.started=stamp
         delta=0 if self.last is None else max(0,min(5,stamp-self.last));self.last=stamp
-        key=(local-timedelta(days=1) if local.hour<6 else local).strftime('%Y-%m-%d')
-        if key!=self.night_key:self.night_key=key;self.night_sent=False;self.night_work=0
-        if idle is None:return self.snapshot(False)
-        if idle>=300:self.work=0.;self.night_work=0.;self.pending=None
-        if idle<60:
-            self.work+=delta
-            if local.hour>=22 or local.hour<6:self.night_work+=delta
-            if self.pending is None:
-                if self.night_work>=600 and not self.night_sent:
-                    self._emit('night');self.night_sent=True
-                elif self.work>=2700:self._emit('candy');self.work=0.
-        return self.snapshot(True)
+        if idle is not None:
+            if idle>=self.BREAK_SECONDS:
+                self.work=0.
+                if self.pending and self.pending['action']=='night':self.pending=None
+            elif idle<self.PRESENT_SECONDS:
+                self.work+=delta
+                if self.pending is None and self.is_night(local) and (self.night_last is None or stamp-self.night_last>=self.NIGHT_REPEAT):
+                    self._emit('night');self.night_last=stamp
+        if self.pending is None and stamp-self.started>=(self.candies+1)*self.CANDY_SECONDS:
+            self.candies+=1;self._emit('candy')
+        return self.snapshot(idle is not None)
     def _emit(self,kind):
         self.serial+=1;self.pending={'id':self.serial,'action':kind}
     def dismiss(self,ident):

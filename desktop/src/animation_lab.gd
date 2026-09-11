@@ -103,7 +103,7 @@ func start_action(action: String):
 	if action in State.FEEDBACK:
 		state._start_feedback(action);return
 	match action:
-		'read':state.set_reading(true)
+		'read':state.read_alt_next=false;state.set_reading(true)   # the lab lists 看书备选 separately; 看书陪伴 is always the main take here
 		'task':state.set_busy(true)
 		'sleep','sleep_alt':state.rest_prefix=action;state._switch(action+'_enter')
 		'sulk':state._switch('sulk_enter')

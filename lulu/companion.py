@@ -1,5 +1,6 @@
 """Optional city weather and local activity care, independent of model tasks."""
 import asyncio,json,os,time,urllib.request,urllib.parse
+from datetime import datetime,timedelta,timezone
 from .activity import CareMonitor,system_idle_seconds
 def fetch_json(url):
     req=urllib.request.Request(url,headers={'User-Agent':'LuluCompanion/0.2'})
@@ -52,9 +53,15 @@ class Companion:
             q={**{k:city[k] for k in ('latitude','longitude')},'current':'weather_code,temperature_2m','timezone':'auto'}
             data=await asyncio.to_thread(fetch_json,'https://api.open-meteo.com/v1/forecast?'+urllib.parse.urlencode(q))
             cur=data['current'];result={'condition':classify(int(cur['weather_code'])),'city':city['name'],'detail':str(cur['temperature_2m'])+' °C'+('（按网络位置自动找到的）' if city.get('auto') else ''),'source':'Open-Meteo','auto':bool(city.get('auto'))}
+            if isinstance(data.get('utc_offset_seconds'),(int,float)):result['utc_offset_seconds']=int(data['utc_offset_seconds'])   # the city's clock drives the night care
         except Exception:result={'condition':'unknown','city':city['name'],'detail':'天气暂不可用，使用普通待机'}
         latest=self.store.rows("SELECT value FROM companion_settings WHERE key='city'")
         if latest and latest[0]['value']==raw:self.weather=result
+    def local_time(self):
+        """Wall-clock time where the user is: the weather city's timezone once Open-Meteo has told us, else this computer's clock."""
+        offset=self.weather.get('utc_offset_seconds')
+        if offset is None:return datetime.now()
+        return datetime.now(timezone.utc).replace(tzinfo=None)+timedelta(seconds=int(offset))
     def snapshot(self):
         rows=self.store.rows("SELECT value FROM companion_settings WHERE key='city'")
         if not rows and not self.located and not os.environ.get('LULU_NO_LOCATE') and (self.locate_job is None or self.locate_job.done()):
@@ -62,7 +69,7 @@ class Companion:
         if time.monotonic()>=self.next_weather and (self.job is None or self.job.done()):
             self.next_weather=time.monotonic()+1800
             if rows:self.job=asyncio.create_task(self.update_weather(rows[0]['value']))
-        return {'weather':self.weather,'care':self.care.update(system_idle_seconds()),'due':self.store.rows("SELECT * FROM reminders WHERE status='pending' AND due<=? ORDER BY due",(time.time(),))}
+        return {'weather':self.weather,'care':self.care.update(system_idle_seconds(),local=self.local_time()),'due':self.store.rows("SELECT * FROM reminders WHERE status='pending' AND due<=? ORDER BY due",(time.time(),))}
     async def close(self):
         for job in (self.job,self.locate_job):
             if job:

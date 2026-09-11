@@ -207,6 +207,18 @@
     531,
     699
   ],
+  "read_alt_enter": [
+    531,
+    607
+  ],
+  "read_alt_loop": [
+    608,
+    655
+  ],
+  "read_alt_exit": [
+    656,
+    699
+  ],
   "framing": {},
   "sunny": [
     1568,
@@ -414,13 +426,16 @@
     }
   },
   "care_policy": {
-    "work_minutes": 45,
-    "break_minutes": 5,
-    "night_start_hour": 22,
+    "candy_every_uptime_hours": 4,
+    "night_start_hour": 18,
     "night_end_hour": 6,
-    "night_active_minutes": 10,
+    "night_repeat_minutes": 60,
+    "night_clock": "city local time when a weather city is set, else the computer clock",
+    "sleep_after_seconds": 120,
+    "nap_minutes": 30,
+    "takes": "read/read_alt and candy/candy_close alternate, main first",
     "default_candy": "candy",
-    "closeup_candy": "test_only"
+    "closeup_candy": "candy_close"
   },
   "pinch_exit": [
     2652,

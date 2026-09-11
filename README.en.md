@@ -4,7 +4,7 @@
 
 **A little capybara on your desktop, ready to keep you company and help with everyday tasks.**
 
-Lulu lives in the bottom-right corner of your screen. It reads, naps, waves hello, and reminds you to rest when it's getting late. Open its work window to translate a passage, make sense of a file, draft an email from your notes, or remember something for tomorrow.
+Lulu lives in the bottom-right corner of your screen. It reads, naps, waves hello, and reminds you to rest in the evening. Open its work window to translate a passage, make sense of a file, draft an email from your notes, or remember something for tomorrow.
 
 Built for everyday work and study, Lulu has eleven task tabs. The default model runs on your own computer, and you can also connect your own API or command-line tool. Chinese and English packages are available for macOS and Windows. Every package includes all animations and the runtime. **No Python installation needed.**
 
@@ -14,8 +14,8 @@ Get the ZIP for your system and language from [Releases](https://github.com/acea
 
 | System | English interface | 中文界面 |
 | --- | --- | --- |
-| macOS · Apple silicon / Intel | `Lulu-1.0-en-macos.zip` | `Lulu-1.0-macos.zip` |
-| Windows 10/11 · 64-bit | `Lulu-1.0-en-windows.zip` | `Lulu-1.0-windows.zip` |
+| macOS · Apple silicon / Intel | `Lulu-1.1-en-macos.zip` | `Lulu-1.1-macos.zip` |
+| Windows 10/11 · 64-bit | `Lulu-1.1-en-windows.zip` | `Lulu-1.1-windows.zip` |
 
 macOS downloads are about 500 MB; Windows downloads are about 470 MB. Each ZIP has a matching `.sha256` checksum file. Choose the language by downloading the corresponding package; there is no language switch in the app yet.
 

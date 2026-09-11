@@ -40,14 +40,27 @@ var idea_at := 10.0
 var agent_seconds := 0.0
 var idea_shown := false
 var done_pending := false   # the task finished before the idea played; hold the sign until after it
+# Rest rhythm: two idle minutes put the pet to sleep (a sulk in progress finishes first, then the nap still comes);
+# a nap lasts nap_seconds, after which the wake-up clip plays by itself. Any click or drag wakes it earlier.
+# Weather scenes only open the day (play_weather_opening); the idle rest is always sleep.
+var sleep_after := 120.0
+var nap_seconds := 1800.0
+var nap_elapsed := 0.0
+var nap_pending := false
+# Main / alternate take turns: each new reading session and each candy flip to the other take.
+var read_alt_next := false
+var candy_alt_next := false
+var read_take := 'read'   # the take this reading session uses (read | read_alt); a task or candy in between resumes the same take
 func play_weather_opening():
 	# First time the day's weather is known: open with that scene instead of waiting for an idle rest.
 	if weather_opened or quitting or busy or reading or agent_mode!='' or not weather in ['sunny','rainy','cloudy'] or not clips.has(weather):return
 	if phase!='idle':return
-	weather_opened=true;rested=true;rest_prefix=weather;_switch(weather)
+	weather_opened=true;_switch(weather)   # the idle clock keeps running: the nap still comes two idle minutes in
 const FEEDBACK = ['pinch','candy','candy_close','night','thinking','thinking_done','blocked','resolved','complete','complete_alt']
 func feedback(name: String):
 	if quitting or not name in FEEDBACK:return
+	if name=='candy':
+		name='candy_close' if candy_alt_next else 'candy';candy_alt_next=not candy_alt_next
 	pending_feedback=name;released=true
 	if phase=='idle':_route()
 func sign_clip() -> String:
@@ -132,7 +145,7 @@ func _reset_idle_clock():
 	looked = false
 	rested = false
 func interact():
-	_reset_idle_clock()
+	_reset_idle_clock();nap_pending=false
 	if (not reading or phase in ['candy_hold','candy_close_hold']) and not phase.begins_with('thinking') and not phase.begins_with('blocked'):
 		released = true
 	# Never rewind an exit or interrupt its remaining frames.
@@ -144,6 +157,8 @@ func set_busy(value: bool):
 		if phase == 'idle': _route()
 func set_reading(value: bool):
 	if quitting: return
+	if value and not reading:
+		read_take = 'read_alt' if read_alt_next else 'read'; read_alt_next = not read_alt_next
 	reading = value
 	if phase == 'idle': _route()
 	elif not value or not phase.begins_with('read_'): released = true
@@ -164,11 +179,12 @@ func preview(name: String):
 		_switch(name)
 	elif name in ['sleep','sleep_alt']:
 		rest_prefix = name
-		released = false
+		released = false;nap_elapsed = 0.0
 		_switch(rest_prefix + '_enter')
 	elif name in ['look_a','look_b']: _switch(name)
 func _route():
 	released = false
+	if quitting or pending_feedback!='' or agent_mode!='' or acknowledgement or busy or reading: nap_pending = false
 	if quitting:
 		_switch('goodbye')
 	elif pending_feedback!='':
@@ -182,7 +198,7 @@ func _route():
 	elif busy:
 		_switch('enter')
 	elif reading:
-		_switch('read_enter')
+		_switch(read_take + '_enter')
 	else:
 		_reset_idle_clock()
 		_switch('idle')
@@ -197,16 +213,16 @@ func _end_clip():
 	elif phase == 'enter':
 		_switch('work' if (busy or agent_mode=='working') and not quitting else 'exit')
 	elif phase == 'exit' or phase == 'ok': _route()
-	elif phase == 'read_enter':
-		_switch('read_exit' if released or not reading or busy or quitting else 'read_loop')
-	elif phase == 'read_loop':
-		if released or not reading or busy or quitting: _switch('read_exit')
-		else: frame = int(clips.read_loop[0]); loops += 1
-	elif phase == 'read_exit': _route()
+	elif phase in ['read_enter','read_alt_enter']:
+		_switch(phase.trim_suffix('_enter') + ('_exit' if released or not reading or busy or quitting else '_loop'))
+	elif phase in ['read_loop','read_alt_loop']:
+		if released or not reading or busy or quitting: _switch(phase.trim_suffix('_loop') + '_exit')
+		else: frame = int(clips[phase][0]); loops += 1
+	elif phase in ['read_exit','read_alt_exit']: _route()
 	elif phase in ['sleep_enter','sleep_alt_enter','sunny_enter','rainy_enter','cloudy_enter']:
 		_switch(rest_prefix + ('_exit' if released else '_loop'))
 	elif phase in ['sleep_loop','sleep_alt_loop','sunny_loop','rainy_loop','cloudy_loop']:
-		if released: _switch(rest_prefix + '_exit')
+		if released or (phase.begins_with('sleep') and nap_elapsed + 0.000001 >= nap_seconds): _switch(rest_prefix + '_exit')
 		else: frame = int(clips[phase][0]); loops += 1
 	elif phase in ['sleep_exit','sleep_alt_exit','sunny_exit','rainy_exit','cloudy_exit']: _route()
 	elif phase == 'sulk_enter': _switch('sulk_exit' if released else 'sulk_hold')
@@ -235,8 +251,12 @@ func advance(delta: float):
 		if agent_mode in ['thinking','working']:
 			agent_seconds += 1.0 / fps
 			if not idea_shown and agent_seconds>=idea_at:_play_idea()
-		if phase in ['idle','look_a','look_b','wave'] and not busy and not reading and not quitting:
+		if phase in ['idle','blink','look_a','look_b','wave','sulk_enter','sulk_hold'] and not busy and not reading and not quitting:
 			idle_seconds += 1.0 / fps
+		if phase in ['sleep_loop','sleep_alt_loop']:
+			nap_elapsed += 1.0 / fps
+		if phase == 'sulk_hold' and not released and not rested and not busy and not reading and not quitting and idle_seconds + 0.000001 >= sleep_after:
+			nap_pending = true; _switch('sulk_exit'); continue
 		if phase in ['idle','blink'] and not busy and not reading and not quitting:
 			blink_seconds += 1.0 / fps
 		if phase == 'idle' and not released and not busy and not reading and not quitting:
@@ -248,11 +268,11 @@ func advance(delta: float):
 				next_wave += 60; _switch('wave'); continue
 			if idle_seconds >= 12 and not looked:
 				looked = true; _switch('look_a' if variant % 2 == 0 else 'look_b'); continue
-			# Alternate awake wave cycles and sleep cycles; held states require interaction.
-			if idle_seconds >= 35 and not rested and variant % 2 == 0 and sulk_at < 0:
-				rested = true; variant += 1
-				rest_prefix = weather if weather in ['sunny','rainy','cloudy'] else 'sleep'
-				_switch('sleep_enter' if rest_prefix=='sleep' else rest_prefix); continue
+			# Two idle minutes (or a sulk that ran into them) start a nap; the weather never replaces it.
+			if (idle_seconds + 0.000001 >= sleep_after or nap_pending) and not rested:
+				rested = true; variant += 1; nap_pending = false; nap_elapsed = 0.0
+				rest_prefix = 'sleep'
+				_switch('sleep_enter'); continue
 		if frame < int(clips[phase][1]): frame += 1
 		else:
 			var was_sulk = phase == 'sulk_exit'

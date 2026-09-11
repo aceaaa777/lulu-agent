@@ -29,7 +29,7 @@ def animation_for(kind, detail=None):
     if kind=='skill_started' and isinstance(detail,dict) and detail.get('skill') in THINKING_SKILLS: return 'thinking'
     return 'working' if kind in WORKING_KINDS else 'thinking'
 
-VERSION = '1.0'
+VERSION = '1.1'
 
 
 def create_app(home, port=8766, provider=None, assets=None):

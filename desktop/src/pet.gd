@@ -54,6 +54,7 @@ var task_status := ''
 var polling := false
 var poll_time := 1.0
 var diagnostic_time := 0.0
+var saved_takes := ''   # main/alternate turn-taking for reading and candy survives a restart (user://takes.json)
 var last_transition := -1
 var blend_time := 1.0
 var drag := false
@@ -181,6 +182,7 @@ func _ready():
 	get_window().content_scale_aspect=Window.CONTENT_SCALE_ASPECT_KEEP
 	manifest = JSON.parse_string(FileAccess.get_file_as_string('res://assets/clips.json'))
 	animation = AnimationState.new(manifest)
+	load_takes()
 	frames_missing = not load_frame_pack()
 	frames=FrameStore.new(manifest)
 	display_frame=int(manifest.idle[0]);blend_from=display_frame
@@ -447,6 +449,16 @@ func make_alert():
 	alert.close_requested.connect(dismiss_due)
 func toggle_reading():
 	animation.set_reading(not animation.reading)
+func load_takes():
+	if not FileAccess.file_exists('user://takes.json'):return
+	var data=JSON.parse_string(FileAccess.get_file_as_string('user://takes.json'))
+	if data is Dictionary:
+		animation.read_alt_next=bool(data.get('read_alt_next',false));animation.candy_alt_next=bool(data.get('candy_alt_next',false))
+func save_takes():
+	var text=JSON.stringify({'read_alt_next':animation.read_alt_next,'candy_alt_next':animation.candy_alt_next})
+	if text==saved_takes:return
+	var f=FileAccess.open('user://takes.json',FileAccess.WRITE)
+	if f:f.store_string(text);f.close();saved_takes=text
 func submit():
 	if shutting_down or task_active or request_pending: return
 	if prompt.text.strip_edges().is_empty():
@@ -626,7 +638,7 @@ func _process(delta):
 	poll_time+=delta;diagnostic_time+=delta
 	if poll_time>.75 and not polling:poll_time=0;poll()
 	if diagnostic_time>1:
-		diagnostic_time=0
+		diagnostic_time=0;save_takes()
 		var f=FileAccess.open('user://runtime.json',FileAccess.WRITE)
 		if f:f.store_string(JSON.stringify({'phase':phase,'frame':display_frame,'reading':animation.reading,'busy':animation.busy,'history':animation.history,'cached_frames':frames.textures.size(),'texture_bytes':frames.cached_bytes,'test_mode':lab.active,'loading':loading}));f.close()
 	var shown_blend=minf(blend_time,.16)
