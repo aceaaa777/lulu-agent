@@ -63,7 +63,9 @@ Lulu checks numbers, dates, and source quotations in some outputs and retries wh
 
 ## A little company while you work
 
-Lulu thinks and types while working, celebrates when a task is done, and reacts when it needs more details. Between tasks, you can move it around or let it read beside you. Sunny, rainy, and cloudy opening animations follow your city's weather. The city is found by IP, or you can choose it yourself.
+Lulu thinks and types while working, celebrates when a task is done, and reacts when it needs more details. Between tasks, you can move it around or let it read beside you. At startup it greets you with a sunny, rainy, or cloudy opening that follows your city's weather. The city is found by IP, or you can choose it yourself.
+
+Left alone, it looks around, waves, sulks for a while, and falls asleep after two minutes, waking half an hour later. From 6 pm it yawns once an hour to remind you to rest, and every four hours of running it asks for a candy. Reading and candy each come in two takes that alternate.
 
 The work window defaults to Large, with Standard and Extra large sizes also available. Use Files, Memory, Reminders, and Unfinished tasks to find your output, manage saved information, and pick up work you've left unfinished.
 
@@ -110,14 +112,14 @@ To uninstall, quit Lulu and delete the installation folder. The data folder rema
 
 ## Testing status
 
-1.0 is Lulu's first public release. Project validation recorded as of September 9, 2026:
+1.0 is Lulu's first public release; 1.1 only changes the pet's routine. Project validation recorded as of September 11, 2026:
 
 | Area | Coverage |
 | --- | --- |
 | Chinese macOS | Full testing on an Apple M5 Mac with 24 GB RAM; the program issues found were fixed. The developer checked that the release package launches. |
 | English macOS | Developer launch check; demo-model end-to-end tests for adding/listing/deleting reminders, translation, summarization, file Q&A, notes, and chat. No native English user trial yet. |
 | Chinese / English Windows | CI builds and frozen-runtime smoke tests passed. No installation acceptance on a real Windows PC yet. |
-| Automation | 178 regression tests passed on Ubuntu, Windows, and macOS CI, plus separate Godot syntax and semantic checks. |
+| Automation | Regression tests pass on Windows and macOS CI, plus separate Godot syntax and semantic checks. The pet's routine is covered by state-machine tests (670 checks each on the Chinese and English source trees). |
 
 Found a problem? [Open an issue](https://github.com/aceaaa777/lulu-agent/issues) with your system, package name, steps, and error message. Check logs for personal information before sharing them.
 
