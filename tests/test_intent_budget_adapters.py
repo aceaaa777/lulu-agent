@@ -55,8 +55,9 @@ def test_budget_timeouts_scale_with_speed():
     assert default.tier in ('A', 'B') and default.num_thread >= 2
 
 
-def test_budget_measure_and_persist(tmp_path):
+def test_budget_measure_and_persist(tmp_path, monkeypatch):
     from conftest import Scripted, Reply
+    monkeypatch.setattr(budgeting, 'physical_memory_gb', lambda: 8.0)   # the tier follows the machine's RAM; pin an 8GB box so CI runners of any size agree
     class Timed(Scripted):
         async def chat(self, messages, tools=None, *, schema=None, **kwargs):
             return Reply(content='一、二、三', usage={'output_tokens': 30, 'eval_seconds': 10, 'input_tokens': 800, 'prompt_seconds': 4})
