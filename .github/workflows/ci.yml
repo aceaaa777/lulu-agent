@@ -11,7 +11,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [windows-latest, macos-latest]   # 只发 Windows 和 macOS 包，回归也只跑这两个；Godot 检查和打包导出仍用 ubuntu
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
